@@ -1,0 +1,39 @@
+<Project>
+  
+  <!-- Centralne zarządzanie pakietami NuGet -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Wspólne właściwości dla wszystkich projektów -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!-- Automatyczne namespace'y na podstawie struktury folderów -->
+  <PropertyGroup>
+    <!-- Bazowy namespace -->
+    <RootNamespaceBase>Translarr</RootNamespaceBase>
+
+    <!-- Wyznacz relatywną ścieżkę projektu względem pliku sln -->
+    <_RelativePath>$([System.IO.Path]::GetRelativePath('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)'))</_RelativePath>
+
+    <!-- Zamień / i \ na . -->
+    <_RelativePath>$([System.String]::Copy($(_RelativePath)).Replace('\', '.').Replace('/', '.'))</_RelativePath>
+
+    <!-- Usuń ewentualne kropki na końcu -->
+    <_RelativePath>$([System.Text.RegularExpressions.Regex]::Replace($(_RelativePath), "\.$", ""))</_RelativePath>
+
+    <!-- Zbuduj finalny RootNamespace -->
+    <RootNamespace>$(RootNamespaceBase).$(_RelativePath)</RootNamespace>
+
+    <!-- To samo dla nazwy assembly (opcjonalnie) -->
+    <AssemblyName>$(RootNamespace)</AssemblyName>
+  </PropertyGroup>
+
+</Project>
+
