@@ -1,0 +1,273 @@
+@page "/library"
+@inject LibraryApiService LibraryService
+@inject ISnackbar Snackbar
+
+<PageTitle>Library - Translarr</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Library</MudText>
+
+<MudCard Elevation="2" Class="mb-4">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="_searchText" 
+                              Label="Search" 
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              OnKeyUp="OnSearchKeyUp" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="_filterProcessed" 
+                           Label="Status" 
+                           Variant="Variant.Outlined"
+                           T="bool?"
+                           Clearable="true"
+                           OnClearButtonClick="@ClearProcessedFilter">
+                    <MudSelectItem Value="@((bool?)true)">Processed</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)false)">Not Processed</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="_filterWanted" 
+                           Label="Wanted" 
+                           Variant="Variant.Outlined"
+                           T="bool?"
+                           Clearable="true"
+                           OnClearButtonClick="@ClearWantedFilter">
+                    <MudSelectItem Value="@((bool?)true)">Wanted</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)false)">Not Wanted</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="_filterAlreadyHas" 
+                           Label="Already Has" 
+                           Variant="Variant.Outlined"
+                           T="bool?"
+                           Clearable="true"
+                           OnClearButtonClick="@ClearAlreadyHasFilter">
+                    <MudSelectItem Value="@((bool?)true)">Has Subtitles</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)false)">No Subtitles</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+<MudTable Items="@_entries?.Items" 
+          Loading="_isLoading" 
+          Hover="true" 
+          Striped="true"
+          Dense="true">
+    <HeaderContent>
+        <MudTh>Series</MudTh>
+        <MudTh>Season</MudTh>
+        <MudTh>File Name</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Wanted</MudTh>
+        <MudTh>Already Has</MudTh>
+        <MudTh>Last Scanned</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Series">@context.Series</MudTd>
+        <MudTd DataLabel="Season">@context.Season</MudTd>
+        <MudTd DataLabel="File Name">
+            <MudTooltip Text="@context.FilePath">
+                <MudText Typo="Typo.body2">@context.FileName</MudText>
+            </MudTooltip>
+        </MudTd>
+        <MudTd DataLabel="Status">
+            @if (context.IsProcessed)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success">Processed</MudChip>
+            }
+            else if (!string.IsNullOrEmpty(context.ErrorMessage))
+            {
+                <MudTooltip Text="@context.ErrorMessage">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                </MudTooltip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Default">Pending</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Wanted">
+            <MudSwitch T="bool" 
+                       Value="@context.IsWanted" 
+                       Color="Color.Primary" 
+                       ThumbIcon="@(context.IsWanted ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                       ValueChanged="@(async (bool val) => await UpdateWantedStatus(context.Id, val))" />
+        </MudTd>
+        <MudTd DataLabel="Already Has">
+            @if (context.AlreadyHas)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+            }
+        </MudTd>
+        <MudTd DataLabel="Last Scanned">@context.LastScanned.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudTd>
+        <MudTd DataLabel="Actions">
+            @if (!string.IsNullOrEmpty(context.ErrorMessage))
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Info" 
+                               Color="Color.Info" 
+                               Size="Size.Small"
+                               OnClick="@(() => ShowErrorDetails(context.ErrorMessage))" />
+            }
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[]{10, 25, 50, 100}" />
+    </PagerContent>
+</MudTable>
+
+@if (_entries != null)
+{
+    <MudGrid Class="mt-4">
+        <MudItem xs="12" Class="d-flex justify-space-between">
+            <MudButton Variant="Variant.Text" 
+                       Disabled="@(_currentPage <= 1)"
+                       OnClick="@(() => ChangePage(_currentPage - 1))">
+                Previous
+            </MudButton>
+            <MudText Typo="Typo.body2" Class="align-self-center">
+                Page @_currentPage of @_entries.TotalPages
+            </MudText>
+            <MudButton Variant="Variant.Text" 
+                       Disabled="@(_currentPage >= _entries.TotalPages)"
+                       OnClick="@(() => ChangePage(_currentPage + 1))">
+                Next
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private PagedResult<SubtitleEntryDto>? _entries;
+    private bool _isLoading = true;
+    private int _currentPage = 1;
+    private int _pageSize = 50;
+    private string? _searchText;
+    private bool? _filterProcessed;
+    private bool? _filterWanted;
+    private bool? _filterAlreadyHas;
+    private System.Threading.Timer? _debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        try
+        {
+            _isLoading = true;
+            _entries = await LibraryService.GetEntriesAsync(
+                page: _currentPage,
+                pageSize: _pageSize,
+                isProcessed: _filterProcessed,
+                isWanted: _filterWanted,
+                alreadyHas: _filterAlreadyHas,
+                search: _searchText
+            );
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading entries: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task UpdateWantedStatus(int id, bool isWanted)
+    {
+        try
+        {
+            await LibraryService.UpdateWantedStatusAsync(id, isWanted);
+            Snackbar.Add("Updated successfully", Severity.Success);
+            
+            // Update local state instead of full reload
+            if (_entries?.Items != null)
+            {
+                var entry = _entries.Items.FirstOrDefault(e => e.Id == id);
+                if (entry != null)
+                {
+                    entry.IsWanted = isWanted;
+                    await InvokeAsync(StateHasChanged); // Force UI refresh
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating status: {ex.Message}", Severity.Error);
+            await LoadEntries(); // Reload to revert the UI change
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        _currentPage = page;
+        await LoadEntries();
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs args)
+    {
+        _debounceTimer?.Dispose();
+        _debounceTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _currentPage = 1;
+                await LoadEntries();
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task ApplyFilters()
+    {
+        _currentPage = 1;
+        await LoadEntries();
+    }
+
+    private async Task ClearProcessedFilter()
+    {
+        _filterProcessed = null;
+        await ApplyFilters();
+    }
+
+    private async Task ClearWantedFilter()
+    {
+        _filterWanted = null;
+        await ApplyFilters();
+    }
+
+    private async Task ClearAlreadyHasFilter()
+    {
+        _filterAlreadyHas = null;
+        await ApplyFilters();
+    }
+
+    private void ShowErrorDetails(string errorMessage)
+    {
+        Snackbar.Add(errorMessage, Severity.Error);
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}
+

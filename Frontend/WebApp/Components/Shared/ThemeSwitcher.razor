@@ -1,0 +1,78 @@
+@inject ThemeService ThemeService
+@implements IDisposable
+
+<MudMenu Icon="@Icons.Material.Filled.Palette" Color="Color.Inherit" AnchorOrigin="Origin.BottomLeft">
+    <MudText Typo="Typo.subtitle2" Class="px-4 py-2">Theme</MudText>
+    <MudDivider />
+    
+    @foreach (var theme in _themes)
+    {
+        <MudMenuItem OnClick="@(() => SelectTheme(theme.Name, false))">
+            @if (_currentTheme == theme.Name && !_isDarkMode)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Check" Class="mr-2" Size="Size.Small" />
+            }
+            else
+            {
+                <span class="mr-6"></span>
+            }
+            @theme.DisplayName
+        </MudMenuItem>
+        
+        @if (theme.SupportsDark)
+        {
+            <MudMenuItem OnClick="@(() => SelectTheme(theme.Name, true))">
+                @if (_currentTheme == theme.Name && _isDarkMode)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Class="mr-2" Size="Size.Small" />
+                }
+                else
+                {
+                    <span class="mr-6"></span>
+                }
+                @theme.DisplayName Dark
+            </MudMenuItem>
+        }
+    }
+    
+    <MudDivider />
+    <MudMenuItem OnClick="@(() => SelectTheme("dracula", true))">
+        @if (_currentTheme == "dracula")
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Check" Class="mr-2" Size="Size.Small" />
+        }
+        else
+        {
+            <span class="mr-6"></span>
+        }
+        Dracula
+    </MudMenuItem>
+</MudMenu>
+
+@code {
+    private List<ThemeOption> _themes = new();
+    private string _currentTheme = "default";
+    private bool _isDarkMode = false;
+
+    protected override void OnInitialized()
+    {
+        _themes = ThemeService.GetAvailableThemes();
+        _currentTheme = ThemeService.CurrentThemeName;
+        _isDarkMode = ThemeService.IsDarkMode;
+        
+        ThemeService.OnThemeChanged += StateHasChanged;
+    }
+
+    private async Task SelectTheme(string themeName, bool isDark)
+    {
+        _currentTheme = themeName;
+        _isDarkMode = isDark;
+        await ThemeService.SetThemeAsync(themeName, isDark);
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= StateHasChanged;
+    }
+}
+

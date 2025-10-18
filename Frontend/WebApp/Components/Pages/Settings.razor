@@ -1,0 +1,289 @@
+@page "/settings"
+@inject SettingsApiService SettingsService
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings - Translarr</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+
+@if (_settings != null)
+{
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Gemini API Configuration</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_geminiApiKey"
+                                      Label="API Key"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Password"
+                                      HelperText="@GetSettingDescription("GeminiApiKey")"
+                                      OnBlur="@(() => SaveSetting("GeminiApiKey", _geminiApiKey))" />
+
+                        <MudTextField @bind-Value="_geminiModel"
+                                      Label="Model"
+                                      Variant="Variant.Outlined"
+                                      HelperText="@GetSettingDescription("GeminiModel")"
+                                      OnBlur="@(() => SaveSetting("GeminiModel", _geminiModel))" />
+
+                        <MudSlider @bind-Value="@_temperature"
+                                   Min="0.0"
+                                   Max="1.0"
+                                   Step="0.05"
+                                   ValueLabel="true"
+                                   Color="Color.Primary">
+                            Temperature: @_temperature.ToString("F2")
+                        </MudSlider>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @GetSettingDescription("Temperature")
+                        </MudText>
+
+                        <MudTextField @bind-Value="_systemPrompt"
+                                      Label="System Prompt"
+                                      Variant="Variant.Outlined"
+                                      Lines="5"
+                                      HelperText="@GetSettingDescription("SystemPrompt")"
+                                      OnBlur="@(() => SaveSetting("SystemPrompt", _systemPrompt))" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Cable"
+                                   OnClick="TestApiConnection"
+                                   Disabled="_isTesting">
+                            @if (_isTesting)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Test API Connection
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2" Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Translation Settings</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Spacing="3">
+                        <MudTextField @bind-Value="_preferredSubsLang"
+                                      Label="Preferred Subtitle Language"
+                                      Variant="Variant.Outlined"
+                                      HelperText="@GetSettingDescription("PreferredSubsLang")"
+                                      OnBlur="@(() => SaveSetting("PreferredSubsLang", _preferredSubsLang))" />
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Rate Limiting</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Spacing="3">
+                        <MudNumericField @bind-Value="@_rateLimitPerMinute"
+                                         Label="Requests Per Minute"
+                                         Variant="Variant.Outlined"
+                                         Min="1"
+                                         HelperText="@GetSettingDescription("RateLimitPerMinute")"
+                                         OnBlur="@(() => SaveRateLimitSetting("RateLimitPerMinute", _rateLimitPerMinute))" />
+
+                        <MudNumericField @bind-Value="@_rateLimitPerDay"
+                                         Label="Requests Per Day"
+                                         Variant="Variant.Outlined"
+                                         Min="1"
+                                         HelperText="@GetSettingDescription("RateLimitPerDay")"
+                                         OnBlur="@(() => SaveRateLimitSetting("RateLimitPerDay", _rateLimitPerDay))" />
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Automation (Worker Service Required)</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Row="true" Spacing="4">
+                        <MudSwitch @bind-Value="@_autoLibraryScan"
+                                   Label="Auto Library Scan"
+                                   Color="Color.Primary"
+                                   Disabled="true" />
+                        
+                        <MudSwitch @bind-Value="@_autoTranslate"
+                                   Label="Auto Translate"
+                                   Color="Color.Primary"
+                                   Disabled="true" />
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                        Note: Automation features require the Worker Service to be running (not yet available)
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private List<AppSettingDto>? _settings;
+    private bool _isLoading = true;
+    private bool _isTesting = false;
+    
+    // Local variables for form fields
+    private string _geminiApiKey = "";
+    private string _geminiModel = "";
+    private string _systemPrompt = "";
+    private string _preferredSubsLang = "";
+    private double _temperature = 0.55;
+    private int _rateLimitPerMinute = 5;
+    private int _rateLimitPerDay = 100;
+    private bool _autoLibraryScan = false;
+    private bool _autoTranslate = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            _isLoading = true;
+            _settings = await SettingsService.GetAllSettingsAsync();
+            
+            // Load values into local variables
+            _geminiApiKey = GetSettingValue("GeminiApiKey");
+            _geminiModel = GetSettingValue("GeminiModel");
+            _systemPrompt = GetSettingValue("SystemPrompt");
+            _preferredSubsLang = GetSettingValue("PreferredSubsLang");
+            
+            // Parse numeric values
+            if (double.TryParse(GetSettingValue("Temperature"), out var temp))
+                _temperature = temp;
+            
+            if (int.TryParse(GetSettingValue("RateLimitPerMinute"), out var rateMin))
+                _rateLimitPerMinute = rateMin;
+            
+            if (int.TryParse(GetSettingValue("RateLimitPerDay"), out var rateDay))
+                _rateLimitPerDay = rateDay;
+            
+            _autoLibraryScan = GetSettingValue("AutoLibraryScan") == "true";
+            _autoTranslate = GetSettingValue("AutoTranslate") == "true";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetSettingValue(string key)
+    {
+        return _settings?.FirstOrDefault(s => s.Key == key)?.Value ?? "";
+    }
+
+    private string GetSettingDescription(string key)
+    {
+        return _settings?.FirstOrDefault(s => s.Key == key)?.Description ?? "";
+    }
+
+    private async Task SaveSetting(string key, string value)
+    {
+        try
+        {
+            // Special handling for Temperature
+            if (key == "Temperature")
+                value = _temperature.ToString("F2");
+            
+            var success = await SettingsService.UpdateSettingAsync(key, value);
+            
+            if (success)
+            {
+                Snackbar.Add($"{key} updated successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Failed to update {key}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating {key}: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SaveRateLimitSetting(string key, int value)
+    {
+        try
+        {
+            var success = await SettingsService.UpdateSettingAsync(key, value.ToString());
+            
+            if (success)
+            {
+                Snackbar.Add($"{key} updated successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Failed to update {key}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating {key}: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task TestApiConnection()
+    {
+        try
+        {
+            _isTesting = true;
+            
+            // First save the current Temperature value
+            await SaveSetting("Temperature", _temperature.ToString("F2"));
+            
+            var result = await SettingsService.TestApiConnectionAsync();
+            
+            if (result?.Success == true)
+            {
+                Snackbar.Add("API connection successful!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"API connection failed: {result?.Message}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error testing API: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isTesting = false;
+        }
+    }
+}
+
