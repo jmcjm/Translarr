@@ -10,7 +10,8 @@
 *   **📚 Automated Library Scanning:** Recursively scans your media directories to discover all video files.
 *   **🌐 Smart Subtitle Detection:** Automatically checks for existing preferred-language subtitles to avoid redundant work.
 *   **🎯 Intelligent Stream Selection:** Analyzes embedded subtitle tracks to select the best source for translation (e.g., prioritizing non-SDH English tracks).
-    *   **Large Context Window:** Its ability to handle a large number of tokens allows entire subtitle files to be processed in a single request, ensuring better context retention and translation consistency.
+*   **🤖 AI-Powered Translation:** Leverages the Google Gemini API for high-quality, context-aware subtitle translation. Gemini was specifically chosen for its advantages:  
+    * **Large Context Window:** Its ability to handle a large number of tokens allows entire subtitle files to be processed in a single request, ensuring better context retention and translation consistency.
     *   **Great Free Tier:** The API provides a substantial free tier (100 calls per day to the 2.5 Pro model), making the service highly accessible and cost-effective for personal use.
 *   **✨ Modern Web UI:** A clean, responsive dashboard built with Blazor and MudBlazor to manage your library, monitor progress, and configure settings.
 *   **📊 Dashboard & Statistics:** Get a quick overview of your library's state: total files, processed, waiting, and errors.
