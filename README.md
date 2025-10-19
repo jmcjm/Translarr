@@ -39,15 +39,56 @@ The project is built using .NET Aspire, following a distributed application mode
 
 The backend itself follows Clean Architecture principles, separating concerns into `Application`, `Infrastructure`, and `Api` layers.
 
-## 🚀 Getting Started
+## 🚀 Getting Started - still WIP!
 
-### Prerequisites
+### 🐳 Option 1: Docker Compose (Recommended)
 
+**Prerequisites:**
+- Docker & Docker Compose
+- Google Gemini API Key (get one for free from [Google AI Studio](https://aistudio.google.com/app/apikey))
+
+**Quick Start:**
+
+1.  **Clone the repository:**
+    ```sh
+    git clone https://github.com/jmcjm/Translarr.git
+    cd Translarr
+    ```
+
+2.  **Configure environment:**
+    *   Copy the example environment file:
+    ```sh
+    cp env.example .env
+    ```
+    *   Edit `.env` and set your media path:
+    ```env
+    MEDIA_ROOT_PATH=/path/to/your/media
+    API_PORT=5000
+    WEB_PORT=5001
+    ```
+
+3.  **Launch the application:**
+    ```sh
+    docker compose up -d
+    ```
+
+4.  **Access the application:**
+    - **Web UI:** http://localhost:5001
+    - **API:** http://localhost:5000
+    - **API Swagger:** http://localhost:5000/swagger
+
+For detailed Docker setup instructions, troubleshooting, and backup procedures, see **[DOCKER_SETUP.md](DOCKER_SETUP.md)**.
+
+---
+
+### 💻 Option 2: Development with .NET Aspire
+
+**Prerequisites:**
 1.  **[.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)**
 2.  **[FFmpeg](https://ffmpeg.org/download.html)**: Must be installed and accessible from your system's `PATH`.
 3.  **Google Gemini API Key**: You can get one for free from **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
 
-### Installation & Running
+**Installation & Running:**
 
 1.  **Clone the repository:**
     ```sh
@@ -110,12 +151,8 @@ The backend itself follows Clean Architecture principles, separating concerns in
     *   A background worker service is planned to enable fully automated, scheduled tasks. This will handle periodic library scans and automatically queue new files for translation, making the application truly "set it and forget it."
     *   This service will be implemented using **[TickerQ](https://raw.githubusercontent.com/Arcenox-co/TickerQ/refs/heads/main/README.md)**, a lightweight, cron-based scheduler for .NET.
 
-*   **🐳 Docker Support:**
-    *   Official Docker images will be published to simplify deployment and dependency management.
-    *   A `docker-compose.yml` template will be provided for a one-command setup, making it incredibly easy for users to get Translarr running on their home servers or NAS devices.
-
 *   **🔒 Authentication:**
-    *   Right now nor the Api nor the WebApp support any form of authentication. This will be added in the future.
+    *   Right now neither the API nor the WebApp support any form of authentication. This will be added in the future.
 
 ## 📜 License
 

@@ -22,13 +22,13 @@ public class Program
         // Add Theme Service
         builder.Services.AddScoped<ThemeService>();
 
-        // Configure HttpClient for API communication using Aspire Service Discovery
-        // "api" is the service name from AppHost - Aspire will automatically resolve the URL
+        // Configure HttpClient for API communication
+        // In Docker Compose: uses ApiBaseUrl from environment variable
+        // With Aspire: uses service discovery (https+http://Translarr-Api)
+        var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https+http://Translarr-Api";
         builder.Services.AddHttpClient("TranslarrApi", client =>
         {
-            // https+http://api means: use HTTPS if available, fallback to HTTP
-            // "api" is the name from AppHost.cs: builder.AddProject<Projects.Api>("api")
-            client.BaseAddress = new Uri("https+http://api");
+            client.BaseAddress = new Uri(apiBaseUrl);
         });
 
         // Register API services
