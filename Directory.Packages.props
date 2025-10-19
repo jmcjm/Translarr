@@ -1,9 +1,4 @@
 <Project>
-  <!-- 
-    Central Package Management
-    Wszystkie wersje pakietów NuGet są zarządzane centralnie w tym pliku.
-    W plikach .csproj używaj <PackageReference Include="..." /> bez atrybutu Version.
-  -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
@@ -55,9 +50,6 @@
     <PackageVersion Include="Swashbuckle.AspNetCore.Swagger" Version="9.0.6" />
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.6" />
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.6" />
-  </ItemGroup>
-  <ItemGroup Label="Logging">
-    <PackageVersion Include="NLog.Extensions.Logging" Version="6.0.5" />
   </ItemGroup>
   <ItemGroup Label="Media Processing">
     <PackageVersion Include="FFMpegCore" Version="5.1.0" />

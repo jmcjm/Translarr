@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Aspire.Hosting.AppHost" />
+        <PackageReference Include="Aspire.Hosting.Docker" />
         <PackageReference Include="CommunityToolkit.Aspire.Hosting.Sqlite" />
     </ItemGroup>
 

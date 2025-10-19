@@ -1,0 +1,55 @@
+﻿services:
+  translarr-api:
+    image: jmcjm/translarr-api:latest
+    container_name: translarr-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-5000}:8080"
+    environment:
+      # SQLite connection string - database file will be stored in /app/data
+      - ConnectionStrings__translarr-db=Data Source=/app/data/translarr.db
+      # Media root path for scanning video files
+      - MediaRootPath=/app/mediaroot
+      # Disable HTTPS redirection in container
+      - ASPNETCORE_URLS=http://+:8080
+      # Set environment to production
+      - ASPNETCORE_ENVIRONMENT=Production
+    volumes:
+      # Persistent volume for SQLite database
+      - translarr-db:/app/data
+      # Mount host directory for media files (change path in .env file)
+      - ${MEDIA_ROOT_PATH:-./media}:/app/mediaroot:rw,z
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  translarr-web:
+    image: jmcjm/translarr-web:latest
+    container_name: translarr-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-5001}:8080"
+    environment:
+      # Configure API URL to point to the API container
+      - ApiBaseUrl=http://translarr-api:8080
+      # Disable HTTPS redirection in container
+      - ASPNETCORE_URLS=http://+:8080
+      # Set environment to production
+      - ASPNETCORE_ENVIRONMENT=Production
+    depends_on:
+      translarr-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  # Named volume for persistent database storage
+  translarr-db:
+    driver: local
