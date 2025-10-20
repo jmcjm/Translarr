@@ -78,7 +78,7 @@ namespace Translarr.Core.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_subtitle_entries_IsProcessed_IsWanted_AlreadyHas",
                 table: "subtitle_entries",
-                columns: new[] { "IsProcessed", "IsWanted", "AlreadyHas" });
+                columns: new[] { "IsProcessed", "IsWanted", "AlreadyHad" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_subtitle_entries_Series_Season",

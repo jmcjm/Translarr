@@ -1,3 +1,4 @@
+using Microsoft.OpenApi.Models;
 using Translarr.Core.Api.Endpoints;
 using Translarr.Core.Api.Middleware;
 using Translarr.Core.Infrastructure;
@@ -28,7 +29,7 @@ public static class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(options =>
         {
-            options.SwaggerDoc("v1", new()
+            options.SwaggerDoc("v1", new OpenApiInfo
             {
                 Title = "Translarr API",
                 Version = "v1",

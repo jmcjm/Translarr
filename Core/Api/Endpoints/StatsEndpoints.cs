@@ -45,8 +45,8 @@ public static class StatsEndpoints
             TotalFiles = allEntries.Count,
             ProcessedFiles = allEntries.Count(e => e.IsProcessed),
             UnprocessedFiles = allEntries.Count(e => !e.IsProcessed),
-            WantedFiles = allEntries.Count(e => e is { IsWanted: true, IsProcessed: false, AlreadyHas: false }),
-            AlreadyHasFiles = allEntries.Count(e => e.AlreadyHas),
+            WantedFiles = allEntries.Count(e => e is { IsWanted: true, IsProcessed: false, AlreadyHad: false }),
+            AlreadyHasFiles = allEntries.Count(e => e.AlreadyHad),
             ErrorFiles = allEntries.Count(e => !string.IsNullOrEmpty(e.ErrorMessage)),
             LastScanned = allEntries.Count != 0
                 ? allEntries.Max(e => e.LastScanned) 

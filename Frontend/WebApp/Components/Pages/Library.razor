@@ -106,7 +106,7 @@
                        ValueChanged="@(async (bool val) => await UpdateWantedStatus(context.Id, val))" />
         </MudTd>
         <MudTd DataLabel="Already Has">
-            @if (context.AlreadyHas)
+            @if (context.AlreadyHad)
             {
                 <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
             }

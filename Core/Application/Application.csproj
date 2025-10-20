@@ -4,4 +4,8 @@
       <ProjectReference Include="..\..\ServiceDefaults\ServiceDefaults.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Include="ErrorOr" />
+    </ItemGroup>
+
 </Project>

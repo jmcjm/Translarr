@@ -40,7 +40,11 @@ public class SubtitleEntryConfiguration : IEntityTypeConfiguration<SubtitleEntry
             .IsRequired()
             .HasDefaultValue(false);
         
-        builder.Property(x => x.AlreadyHas)
+        builder.Property(x => x.ForceProcess)
+            .IsRequired()
+            .HasDefaultValue(false);
+        
+        builder.Property(x => x.AlreadyHad)
             .IsRequired()
             .HasDefaultValue(false);
         
@@ -53,7 +57,8 @@ public class SubtitleEntryConfiguration : IEntityTypeConfiguration<SubtitleEntry
             .HasMaxLength(2048);
         
         // Indeksy dla efektywnego wyszukiwania
-        builder.HasIndex(x => new { x.IsProcessed, x.IsWanted, x.AlreadyHas });
+        builder.HasIndex(x => new { x.IsProcessed, x.IsWanted, x.AlreadyHad });
+        builder.HasIndex(x => x.ForceProcess);
         builder.HasIndex(x => x.FilePath).IsUnique();
         builder.HasIndex(x => new { x.Series, x.Season });
     }

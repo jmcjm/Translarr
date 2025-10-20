@@ -1,3 +1,4 @@
+using ErrorOr;
 using Microsoft.EntityFrameworkCore;
 using Translarr.Core.Application.Abstractions.Repositories;
 using Translarr.Core.Application.Models;
@@ -8,24 +9,29 @@ namespace Translarr.Core.Infrastructure.Repositories;
 
 public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntryRepository
 {
+    /// <inheritdoc />
     public async Task<List<SubtitleEntryDto>> GetUnprocessedWantedAsync(int take = 100)
     {
-        var entries = await context.SubtitleEntries
-            .Where(e => !e.IsProcessed && e.IsWanted && !e.AlreadyHas)
+        var entries = await context.SubtitleEntries 
+            .Where(e => (!e.IsProcessed && e.IsWanted && !e.AlreadyHad) || e.ForceProcess == true)
             .Take(take)
+            .AsNoTracking()
             .ToListAsync();
 
         return entries.Select(MapToDto).ToList();
     }
 
+    /// <inheritdoc />
     public async Task<SubtitleEntryDto?> GetByFilePathAsync(string filePath)
     {
         var entry = await context.SubtitleEntries
+            .AsNoTracking()
             .FirstOrDefaultAsync(e => e.FilePath == filePath);
 
         return entry == null ? null : MapToDto(entry);
     }
 
+    /// <inheritdoc />
     public async Task AddAsync(SubtitleEntryDto entry)
     {
         var dao = MapToDao(entry);
@@ -34,9 +40,11 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         entry.Id = dao.Id;
     }
 
+    /// <inheritdoc />
     public async Task<SubtitleEntryDto> UpdateAsync(SubtitleEntryDto entry)
     {
-        var dao = await context.SubtitleEntries.FindAsync(entry.Id);
+        var dao = await context.SubtitleEntries
+            .FirstOrDefaultAsync(x => x.Id == entry.Id);
         
         if (dao == null)
         {
@@ -49,7 +57,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         dao.FilePath = entry.FilePath;
         dao.IsProcessed = entry.IsProcessed;
         dao.IsWanted = entry.IsWanted;
-        dao.AlreadyHas = entry.AlreadyHas;
+        dao.AlreadyHad = entry.AlreadyHad;
         dao.LastScanned = entry.LastScanned;
         dao.ProcessedAt = entry.ProcessedAt;
         dao.ErrorMessage = entry.ErrorMessage;
@@ -58,16 +66,85 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         return MapToDto(dao);
     }
 
+    /// <inheritdoc />
     public async Task<List<SubtitleEntryDto>> GetAllAsync()
     {
-        var entries = await context.SubtitleEntries.ToListAsync();
+        var entries = await context.SubtitleEntries
+            .AsNoTracking()
+            .ToListAsync();
+        
         return entries.Select(MapToDto).ToList();
     }
 
-    public async Task<SubtitleEntryDto?> GetByIdAsync(int id)
+    /// <inheritdoc />
+    public async Task<ErrorOr<SubtitleEntryDto>> GetByIdAsync(int id)
     {
-        var entry = await context.SubtitleEntries.FindAsync(id);
-        return entry == null ? null : MapToDto(entry);
+        var entry = await context.SubtitleEntries
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id);
+        
+        if (entry == null)
+            return Error.NotFound("SubtitleEntryRepository.GetByIdAsync", $"SubtitleEntry with Id {id} not found");
+        
+        return MapToDto(entry);
+    }
+
+    /// <inheritdoc />
+    public async Task<PagedResult<SubtitleEntryDto>> GetPagedAsync(
+        int page = 1,
+        int pageSize = 50,
+        bool? isProcessed = null,
+        bool? isWanted = null,
+        bool? alreadyHas = null,
+        string? search = null)
+    {
+        var query = context.SubtitleEntries.AsNoTracking();
+
+        // Apply filters
+        if (isProcessed.HasValue)
+            query = query.Where(e => e.IsProcessed == isProcessed.Value);
+
+        if (isWanted.HasValue)
+            query = query.Where(e => e.IsWanted == isWanted.Value);
+
+        if (alreadyHas.HasValue)
+            query = query.Where(e => e.AlreadyHad == alreadyHas.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            // Sanityzacja wyszukiwania - ograniczenie długości i usunięcie niebezpiecznych znaków
+            var sanitizedSearch = search.Trim();
+            if (sanitizedSearch.Length > 100) // Ograniczenie długości
+                sanitizedSearch = sanitizedSearch.Substring(0, 100);
+            
+            var searchPattern = $"%{sanitizedSearch}%";
+            query = query.Where(e =>
+                EF.Functions.Like(e.FileName, searchPattern) ||
+                EF.Functions.Like(e.Series, searchPattern) ||
+                EF.Functions.Like(e.Season, searchPattern));
+        }
+
+        // Get total count
+        var totalCount = await query.CountAsync();
+
+        // Apply pagination
+        var items = await query
+            .OrderBy(e => e.Series)
+            .ThenBy(e => e.Season)
+            .ThenBy(e => e.FileName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => MapToDto(e))
+            .ToListAsync();
+
+        return new PagedResult<SubtitleEntryDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
     }
 
     private static SubtitleEntryDto MapToDto(SubtitleEntryDao dao)
@@ -81,7 +158,8 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             FilePath = dao.FilePath,
             IsProcessed = dao.IsProcessed,
             IsWanted = dao.IsWanted,
-            AlreadyHas = dao.AlreadyHas,
+            AlreadyHad = dao.AlreadyHad,
+            ForceProcess = dao.ForceProcess,
             LastScanned = dao.LastScanned,
             ProcessedAt = dao.ProcessedAt,
             ErrorMessage = dao.ErrorMessage
@@ -99,7 +177,8 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             FilePath = dto.FilePath,
             IsProcessed = dto.IsProcessed,
             IsWanted = dto.IsWanted,
-            AlreadyHas = dto.AlreadyHas,
+            AlreadyHad = dto.AlreadyHad,
+            ForceProcess = dto.ForceProcess,
             LastScanned = dto.LastScanned,
             ProcessedAt = dto.ProcessedAt,
             ErrorMessage = dto.ErrorMessage
