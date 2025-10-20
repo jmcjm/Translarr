@@ -18,7 +18,6 @@ public interface ILibraryService
     /// <summary>
     /// Toggles the "wanted" status of a media item with the specified ID.
     /// If the item is currently marked as wanted, it will be set to unwated, and vice versa.
-    /// TODO: In the future, this method could allow explicitly setting the status instead of toggling it.
     /// </summary>
     /// <param name="id">ID of the media entry whose wanted status should be toggled.</param>
     /// <param name="wantedStatus">New status</param>
@@ -32,7 +31,6 @@ public interface ILibraryService
     /// <summary>
     /// Toggles the "force process" status of a media item with the specified ID.
     /// If the item is currently not marked for force processing, it will be set to force process, and vice versa.
-    /// TODO: In the future, this method could allow explicitly setting the status instead of toggling it.
     /// </summary>
     /// <param name="id">ID of the media entry whose force process status should be toggled.</param>
     /// <param name="forceProcess"></param>
