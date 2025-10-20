@@ -11,6 +11,7 @@ public class AppSettingsRepository(TranslarrDbContext context) : IAppSettingsRep
     public async Task<AppSettingDto?> GetByKeyAsync(string key)
     {
         var setting = await context.AppSettings
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Key == key);
 
         return setting == null ? null : MapToDto(setting);
@@ -18,7 +19,9 @@ public class AppSettingsRepository(TranslarrDbContext context) : IAppSettingsRep
 
     public async Task<List<AppSettingDto>> GetAllAsync()
     {
-        var settings = await context.AppSettings.ToListAsync();
+        var settings = await context.AppSettings
+            .AsNoTracking()
+            .ToListAsync();
         return settings.Select(MapToDto).ToList();
     }
 

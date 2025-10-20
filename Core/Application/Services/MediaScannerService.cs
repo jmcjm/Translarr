@@ -5,23 +5,10 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
 
-public class MediaScannerService : IMediaScannerService
+public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsService settingsService, IConfiguration configuration) : IMediaScannerService
 {
-    private readonly ISubtitleEntryRepository _repository;
-    private readonly ISettingsService _settingsService;
-    private readonly string _mediaRootPath;
+    private readonly string _mediaRootPath = configuration.GetValue<string>("MediaRootPath") ?? throw new ArgumentException("MediaRootPath configuration not found");
     private readonly string[] _videoExtensions = [".mkv", ".mp4", ".avi", ".mov", ".m4v", ".webm", ".flv"];
-
-    public MediaScannerService(
-        ISubtitleEntryRepository repository, 
-        ISettingsService settingsService,
-        IConfiguration configuration)
-    {
-        _repository = repository;
-        _settingsService = settingsService;
-        _mediaRootPath = configuration.GetValue<string>("MediaRootPath") 
-            ?? throw new ArgumentException("MediaRootPath configuration not found");
-    }
 
     public async Task<ScanResultDto> ScanLibraryAsync()
     {
@@ -31,7 +18,7 @@ public class MediaScannerService : IMediaScannerService
 
         try
         {
-            var preferredLang = await _settingsService.GetSettingAsync("PreferredSubsLang") 
+            var preferredLang = await settingsService.GetSettingAsync("PreferredSubsLang") 
                 ?? throw new ArgumentException("PreferredSubsLang setting not found");
 
             var videoFiles = ScanFilesystemAsync(_mediaRootPath);
@@ -119,7 +106,7 @@ public class MediaScannerService : IMediaScannerService
         {
             try
             {
-                var existingEntry = await _repository.GetByFilePathAsync(videoFile.FilePath);
+                var existingEntry = await repository.GetByFilePathAsync(videoFile.FilePath);
                 var subtitleFileName = $"{Path.GetFileNameWithoutExtension(videoFile.FileName)}.{preferredLang}.srt";
                 var subtitlePath = Path.Combine(Path.GetDirectoryName(videoFile.FilePath)!, subtitleFileName);
                 var alreadyHas = File.Exists(subtitlePath);
@@ -135,18 +122,19 @@ public class MediaScannerService : IMediaScannerService
                         Season = videoFile.SeasonNumber,
                         IsProcessed = false,
                         IsWanted = false,
-                        AlreadyHas = alreadyHas,
+                        ForceProcess = false,
+                        AlreadyHad = alreadyHas,
                         LastScanned = DateTime.UtcNow
                     };
 
-                    await _repository.AddAsync(newEntry);
+                    await repository.AddAsync(newEntry);
                     result.NewFiles++;
                 }
                 else
                 {
                     // Update existing
-                    var hadSubtitles = existingEntry.AlreadyHas;
-                    existingEntry.AlreadyHas = alreadyHas;
+                    var hadSubtitles = existingEntry.AlreadyHad;
+                    existingEntry.AlreadyHad = alreadyHas;
                     existingEntry.LastScanned = DateTime.UtcNow;
                     
                     // If subtitles disappeared, reset processing status
@@ -156,7 +144,7 @@ public class MediaScannerService : IMediaScannerService
                         existingEntry.ErrorMessage = null;
                     }
                     
-                    await _repository.UpdateAsync(existingEntry);
+                    await repository.UpdateAsync(existingEntry);
                     result.UpdatedFiles++;
                 }
             }

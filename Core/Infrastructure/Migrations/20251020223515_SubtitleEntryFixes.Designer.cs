@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Translarr.Core.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using Translarr.Core.Infrastructure.Persistence;
 namespace Translarr.Core.Infrastructure.Migrations
 {
     [DbContext(typeof(TranslarrDbContext))]
-    partial class TranslarrDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251020223515_SubtitleEntryFixes")]
+    partial class SubtitleEntryFixes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");

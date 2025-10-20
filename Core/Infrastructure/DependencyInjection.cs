@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IApiUsageRepository, ApiUsageRepository>();
         
         // Application Services
+        services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<IApiUsageService, ApiUsageService>();
         services.AddScoped<IMediaScannerService, MediaScannerService>();

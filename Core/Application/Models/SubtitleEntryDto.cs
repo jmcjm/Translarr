@@ -9,7 +9,8 @@ public class SubtitleEntryDto
     public required string FilePath { get; set; }
     public bool IsProcessed { get; set; }
     public bool IsWanted { get; set; }
-    public bool AlreadyHas { get; set; }
+    public bool AlreadyHad { get; set; }
+    public bool ForceProcess { get; set; } = false;
     public DateTime LastScanned { get; set; }
     public DateTime? ProcessedAt { get; set; }
     public string? ErrorMessage { get; set; }

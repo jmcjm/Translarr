@@ -1,4 +1,4 @@
-namespace Translarr.Core.Api.Models;
+namespace Translarr.Core.Application.Models;
 
 public class PagedResult<T>
 {
@@ -8,4 +8,3 @@ public class PagedResult<T>
     public int PageSize { get; set; }
     public int TotalPages { get; set; }
 }
-

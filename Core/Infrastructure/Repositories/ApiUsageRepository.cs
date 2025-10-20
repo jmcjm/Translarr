@@ -18,7 +18,8 @@ public class ApiUsageRepository(TranslarrDbContext context) : IApiUsageRepositor
     public async Task<List<ApiUsageDto>> GetByDateRangeAsync(DateTime from, DateTime to, string? model = null)
     {
         var query = context.ApiUsage
-            .Where(u => u.Date >= from && u.Date <= to);
+            .Where(u => u.Date >= from && u.Date <= to)
+            .AsNoTracking();
 
         if (!string.IsNullOrEmpty(model))
         {
