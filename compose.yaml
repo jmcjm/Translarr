@@ -1,4 +1,12 @@
 ﻿services:
+  translarr-db-init:
+    image: alpine:latest
+    container_name: translarr-db-init
+    volumes:
+      - translarr-db:/app/data
+    command: sh -c "if [ ! -f /app/data/translarr.db ]; then touch /app/data/translarr.db && echo 'Database file created'; else echo 'Database file already exists'; fi && chown -R 1000:1000 /app/data && chmod -R 755 /app/data && chmod 666 /app/data/translarr.db && echo 'Permissions set correctly'"
+    restart: "no"
+
   translarr-api:
     image: jmcjm/translarr-api:latest
     container_name: translarr-api
@@ -19,12 +27,10 @@
       - translarr-db:/app/data
       # Mount host directory for media files (change path in .env file)
       - ${MEDIA_ROOT_PATH:-./media}:/app/mediaroot:rw,z
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    user: "1000:1000"
+    depends_on:
+      translarr-db-init:
+        condition: service_completed_successfully
 
   translarr-web:
     image: jmcjm/translarr-web:latest
@@ -40,14 +46,7 @@
       # Set environment to production
       - ASPNETCORE_ENVIRONMENT=Production
     depends_on:
-      translarr-api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - translarr-api
 
 volumes:
   # Named volume for persistent database storage
