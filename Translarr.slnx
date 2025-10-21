@@ -14,6 +14,7 @@
       <File Path="Directory.Build.props" />
       <File Path="Directory.Packages.props" />
       <File Path="LICENSE" />
+      <File Path=".github/workflows/publish.yml" />
   </Folder>
   <Project Path="AppHost\AppHost.csproj" Type="Classic C#" />
   <Project Path="ServiceDefaults\ServiceDefaults.csproj" Type="Classic C#" />

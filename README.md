@@ -154,6 +154,9 @@ For detailed Docker setup instructions, troubleshooting, and backup procedures, 
 *   **🔒 Authentication:**
     *   Right now neither the API nor the WebApp support any form of authentication. This will be added in the future.
 
+*   **🐧 SELinux Compatibility:**
+    *   Containers do not work on systems with SELinux set to `enforcing`.
+
 ## 📜 License
 
 This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE](LICENSE) file for more details.

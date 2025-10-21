@@ -1,0 +1,36 @@
+name: Build and Publish to Docker Hub
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # 3. Build solution
+      - name: Build solution
+        run: dotnet build --configuration Release
+
+      # 4. Login to Docker Hub
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 5. Publish 
+      - name: Publish artifacts
+        run: cd Core/Api && dotnet publish /t:PublishContainer && cd ../../Frontend/WebApp && dotnet publish /t:PublishContainer
+

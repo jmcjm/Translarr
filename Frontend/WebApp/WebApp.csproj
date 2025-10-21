@@ -11,8 +11,8 @@
 
         <ContainerRegistry>docker.io</ContainerRegistry>
         <ContainerRepository>jmcjm/Translarr-Web</ContainerRepository>
-        <ContainerImageTags>latest;$(Version);alpha</ContainerImageTags>
-<!--        <ContainerFamily>alpine</ContainerFamily>-->
+        <ContainerImageTags>nightly</ContainerImageTags>
+        <ContainerFamily>alpine</ContainerFamily>
     </PropertyGroup>
     
     <ItemGroup>
