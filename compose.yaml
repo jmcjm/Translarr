@@ -8,7 +8,7 @@
     restart: "no"
 
   translarr-api:
-    image: jmcjm/translarr-api:latest
+    image: jmcjm/translarr-api:nightly
     container_name: translarr-api
     restart: unless-stopped
     ports:
@@ -33,7 +33,7 @@
         condition: service_completed_successfully
 
   translarr-web:
-    image: jmcjm/translarr-web:latest
+    image: jmcjm/translarr-web:nightly
     container_name: translarr-web
     restart: unless-stopped
     ports:
