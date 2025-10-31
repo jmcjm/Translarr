@@ -22,6 +22,7 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
                 ?? throw new ArgumentException("PreferredSubsLang setting not found");
 
             var videoFiles = ScanFilesystemAsync(_mediaRootPath);
+            await RemoveMissingEntriesAsync(videoFiles, result, errors);
             await AnalyzeVideoFilesAsync(videoFiles, preferredLang, result, errors);
 
             result.Errors = errors;
@@ -153,6 +154,40 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
                 errors.Add($"Error processing {videoFile.FileName}: {ex.Message}");
                 result.ErrorFiles++;
             }
+        }
+    }
+
+    private async Task RemoveMissingEntriesAsync(List<VideoFile> videoFiles, ScanResultDto result, List<string> errors)
+    {
+        try
+        {
+            var existingEntries = await repository.GetAllAsync();
+
+            if (existingEntries.Count == 0)
+                return;
+
+            var existingFilePaths = videoFiles
+                .Select(v => v.FilePath)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var entriesToRemove = existingEntries
+                .Where(entry => !existingFilePaths.Contains(entry.FilePath))
+                .ToList();
+
+            if (entriesToRemove.Count == 0)
+                return;
+
+            var removedCount = await repository.DeleteByIdsAsync(entriesToRemove.Select(e => e.Id));
+            result.RemovedFiles += removedCount;
+
+            if (removedCount < entriesToRemove.Count)
+            {
+                errors.Add("Some database entries could not be removed during cleanup.");
+            }
+        }
+        catch (Exception ex)
+        {
+            errors.Add($"Failed to remove stale entries: {ex.Message}");
         }
     }
 }

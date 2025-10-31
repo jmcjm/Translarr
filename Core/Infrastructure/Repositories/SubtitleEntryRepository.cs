@@ -147,6 +147,30 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         };
     }
 
+    /// <inheritdoc />
+    public async Task<int> DeleteByIdsAsync(IEnumerable<int> ids)
+    {
+        var idList = ids
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+
+        if (idList.Count == 0)
+            return 0;
+
+        var entries = await context.SubtitleEntries
+            .Where(e => idList.Contains(e.Id))
+            .ToListAsync();
+
+        if (entries.Count == 0)
+            return 0;
+
+        context.SubtitleEntries.RemoveRange(entries);
+        await context.SaveChangesAsync();
+
+        return entries.Count;
+    }
+
     private static SubtitleEntryDto MapToDto(SubtitleEntryDao dao)
     {
         return new SubtitleEntryDto
