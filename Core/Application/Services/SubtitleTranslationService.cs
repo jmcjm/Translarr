@@ -14,7 +14,7 @@ public class SubtitleTranslationService(
 {
     private const string WorkDir = "/tmp/translarr";
 
-    public async Task<TranslationResultDto> TranslateNextBatchAsync(int batchSize = 1)
+    public async Task<TranslationResultDto> TranslateNextBatchAsync(int batchSize = 100)
     {
         var startTime = DateTime.UtcNow;
         var result = new TranslationResultDto();

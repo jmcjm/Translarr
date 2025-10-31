@@ -1,10 +1,11 @@
 using FFMpegCore;
+using Microsoft.Extensions.Logging;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Infrastructure.Services;
 
-public class FfmpegService : IFfmpegService
+public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
 {
     public async Task<object> GetVideoStreamsAsync(string videoPath)
     {
@@ -89,8 +90,9 @@ public class FfmpegService : IFfmpegService
 
             return File.Exists(outputPath);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error processing video: {ex}", ex.Message);
             return false;
         }
     }

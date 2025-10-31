@@ -4,18 +4,11 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Frontend.WebApp.Services;
 
-public class SettingsApiService
+public class SettingsApiService(IHttpClientFactory httpClientFactory)
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public SettingsApiService(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
     public async Task<List<AppSettingDto>?> GetAllSettingsAsync()
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.GetAsync("/api/settings");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<List<AppSettingDto>>();
@@ -23,7 +16,7 @@ public class SettingsApiService
 
     public async Task<AppSettingDto?> GetSettingAsync(string key)
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.GetAsync($"/api/settings/{key}");
         
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -35,7 +28,7 @@ public class SettingsApiService
 
     public async Task<bool> UpdateSettingAsync(string key, string value)
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.PutAsJsonAsync($"/api/settings/{key}", 
             new UpdateSettingRequest(value));
         return response.IsSuccessStatusCode;
@@ -43,7 +36,7 @@ public class SettingsApiService
 
     public async Task<ApiTestResult?> TestApiConnectionAsync()
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.PostAsync("/api/settings/test-api", null);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ApiTestResult>();
