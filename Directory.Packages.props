@@ -29,20 +29,20 @@
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.5.1" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.5.2" />
   </ItemGroup>
   <ItemGroup Label="Aspire">
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.5.1" />
-    <PackageVersion Include="Aspire.Hosting.Docker" Version="9.5.1-preview.1.25502.11" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.5.2" />
+    <PackageVersion Include="Aspire.Hosting.Docker" Version="9.5.2-preview.1.25522.3" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="9.5.1" />
     <PackageVersion Include="Aspire.StackExchange.Redis.OutputCaching" Version="9.5.1" />
   </ItemGroup>
   <ItemGroup Label="Observability and Telemetry">
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.13.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.13.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.12.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.13.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.13.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.13.0" />
   </ItemGroup>
   <ItemGroup Label="Swagger and OpenAPI">
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="9.0.6" />
@@ -52,13 +52,13 @@
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.6" />
   </ItemGroup>
   <ItemGroup Label="Media Processing">
-    <PackageVersion Include="FFMpegCore" Version="5.1.0" />
+    <PackageVersion Include="FFMpegCore" Version="5.4.0" />
   </ItemGroup>
   <ItemGroup Label="AI">
-    <PackageVersion Include="Mscc.GenerativeAI" Version="2.8.18" />
+    <PackageVersion Include="Mscc.GenerativeAI" Version="2.8.23" />
   </ItemGroup>
   <ItemGroup Label="UI Components">
-    <PackageVersion Include="MudBlazor" Version="8.5.0" />
+    <PackageVersion Include="MudBlazor" Version="8.13.0" />
   </ItemGroup>
   <ItemGroup Label="Aspire SQLite">
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.SQLite" Version="9.8.0" />
