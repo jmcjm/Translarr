@@ -163,7 +163,7 @@
             
             if (result != null)
             {
-                Snackbar.Add($"Scan completed: {result.NewFiles} new, {result.UpdatedFiles} updated", 
+                Snackbar.Add($"Scan completed: {result.NewFiles} new, {result.UpdatedFiles} updated, {result.RemovedFiles} removed", 
                     Severity.Success);
                 await LoadStats();
             }

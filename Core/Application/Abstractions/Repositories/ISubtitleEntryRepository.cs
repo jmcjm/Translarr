@@ -64,5 +64,12 @@ public interface ISubtitleEntryRepository
         bool? isWanted = null,
         bool? alreadyHas = null,
         string? search = null);
+
+    /// <summary>
+    /// Deletes subtitle entries identified by the provided IDs.
+    /// </summary>
+    /// <param name="ids">Collection of subtitle entry IDs to delete.</param>
+    /// <returns>The number of entries removed.</returns>
+    Task<int> DeleteByIdsAsync(IEnumerable<int> ids);
 }
 
