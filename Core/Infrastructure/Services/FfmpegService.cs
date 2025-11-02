@@ -39,11 +39,13 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
 
     public async Task<SubtitleStreamInfo?> FindBestSubtitleStreamAsync(string videoPath)
     {
+        logger.LogInformation("Finding best subtitle stream for {file}", videoPath);
         var mediaInfo = await FFProbe.AnalyseAsync(videoPath);
         var subtitleStreams = mediaInfo.SubtitleStreams.ToList();
 
         if (subtitleStreams.Count == 0)
         {
+            logger.LogWarning("No subtitle streams found for {file}", videoPath);
             return null;
         }
 
@@ -58,12 +60,31 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
         
         var nonSdhStreams = (englishStreams.Count > 0 ? englishStreams : subtitleStreams)
             .Where(s => !sdhKeywords.Any(keyword => 
-                s.Language?.ToLowerInvariant().Contains(keyword) ?? false))
+                s.Language?.ToLowerInvariant().Contains(keyword, StringComparison.InvariantCultureIgnoreCase) ?? false))
             .ToList();
 
-        // If no subtitles without SDH, take first available
-        var selectedStream = nonSdhStreams.FirstOrDefault() ?? 
-                             (englishStreams.FirstOrDefault() ?? subtitleStreams.First());
+        // First we want to prioritize streams with Dialog in title so we won't take any Songs and Signs or other non-dialog subtitles by mistake
+        var dialogSubtitles = nonSdhStreams.Where(t => t.Tags?.Values.Any(v => v.Contains("Dialog", StringComparison.OrdinalIgnoreCase)) ?? false).ToList();
+        
+        SubtitleStream selectedStream;
+        
+        if (dialogSubtitles.Count > 0)
+        {
+            // Prefer dialog subtitles
+            selectedStream = dialogSubtitles.First();
+        }
+        else
+        {
+            // If no dialog subtitles, filter out known non-dialog subtitles and take first available
+            var knownNonDialogTags = new[] { "S&S", "Honorifics", "Signs", "Songs" };
+            var dialogOrUnknown = nonSdhStreams
+                .Where(t => !knownNonDialogTags.Any(tag => t.Tags?.Values.Any(v => v.Contains(tag, StringComparison.OrdinalIgnoreCase)) ?? false))
+                .ToList();
+            
+            selectedStream = dialogOrUnknown.FirstOrDefault() ?? 
+                           nonSdhStreams.FirstOrDefault() ?? 
+                           (englishStreams.FirstOrDefault() ?? subtitleStreams.First())!;
+        }
 
         return new SubtitleStreamInfo
         {
@@ -79,6 +100,7 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
     {
         try
         {
+            logger.LogInformation("Extracting subtitles for {file} stream {stream}", videoPath, streamIndex);
             // FFMpegCore doesn't have direct method for subtitle extraction
             // We need to use FFMpegArguments
             await FFMpegArguments

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Translarr.Core.Application.Abstractions.Repositories;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
@@ -9,6 +10,7 @@ public class SubtitleTranslationService(
     ISettingsService settingsService,
     IApiUsageService apiUsageService,
     IFfmpegService ffmpegService,
+    ILogger<SubtitleTranslationService> logger,
     IGeminiClient geminiClient)
     : ISubtitleTranslationService
 {
@@ -16,23 +18,36 @@ public class SubtitleTranslationService(
 
     public async Task<TranslationResultDto> TranslateNextBatchAsync(int batchSize = 100)
     {
+        logger.LogInformation("Starting translation");
         var startTime = DateTime.UtcNow;
         var result = new TranslationResultDto();
         var errors = new List<string>();
 
         try
-        {
+        { 
             // Get files to process
             var entries = await repository.GetUnprocessedWantedAsync(batchSize);
+            
+            if (entries.Count == 0)
+            {
+                logger.LogInformation("No unprocessed entries found");
+                return result;
+            }
+            
+            logger.LogInformation("Found {count} unprocessed entries", entries.Count);
+            
+            var model = await settingsService.GetSettingAsync("GeminiModel") ?? throw new ArgumentException("GeminiModel setting not found");
+            logger.LogInformation("Using Gemini model {model}", model);
 
             foreach (var entry in entries)
             {
                 try
                 {
-                    await ProcessEntryAsync(entry, result, errors);
+                    await ProcessEntryAsync(entry, result, model);
                 }
                 catch (Exception ex)
                 {
+                    logger.LogError(ex, "Error processing {file}: {msg}", entry.FileName, ex.Message);
                     errors.Add($"Error processing {entry.FileName}: {ex.Message}");
                     result.ErrorCount++;
 
@@ -48,18 +63,18 @@ public class SubtitleTranslationService(
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Critical error during translation: {msg}", ex.Message);
             errors.Add($"Critical error during translation: {ex.Message}");
             result.Errors = errors;
             result.Duration = DateTime.UtcNow - startTime;
         }
 
+        logger.LogInformation("Translation complete");
         return result;
     }
 
-    private async Task ProcessEntryAsync(SubtitleEntryDto entry, TranslationResultDto result, List<string> errors)
+    private async Task ProcessEntryAsync(SubtitleEntryDto entry, TranslationResultDto result, string model)
     {
-        var model = await settingsService.GetSettingAsync("GeminiModel") ?? throw new ArgumentException("GeminiModel setting not found");
-        
         // 1. Check rate limit
         if (!await apiUsageService.CanMakeRequestAsync(model))
         {
@@ -73,6 +88,7 @@ public class SubtitleTranslationService(
         {
             // CASE: No suitable subtitles - mark as processed
             // (this is a permanent state, no point in trying again)
+            logger.LogWarning("No suitable subtitles found for {file}, skipping", entry.FileName);
             entry.IsProcessed = true;
             entry.ProcessedAt = DateTime.UtcNow;
             entry.ErrorMessage = "No suitable embedded subtitles found - skipped";
@@ -97,6 +113,7 @@ public class SubtitleTranslationService(
 
         try
         {
+            // TODO: make it into GeminiSettings model and pass it to ProcessEntryAsync instead of getting it from settings every single time
             // 5. Get transcoding settings
             var systemPrompt = await settingsService.GetSettingAsync("SystemPrompt") ?? throw new ArgumentException("SystemPrompt setting not found");
             var temperatureStr = await settingsService.GetSettingAsync("Temperature") ?? throw new ArgumentException("Temperature setting not found");
@@ -129,6 +146,7 @@ public class SubtitleTranslationService(
         }
         finally
         {
+            logger.LogInformation("Removing temporary files");
             // 10. Remove temporary files
             if (File.Exists(extractedSubtitlePath))
             {
@@ -137,4 +155,3 @@ public class SubtitleTranslationService(
         }
     }
 }
-

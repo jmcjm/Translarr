@@ -1,17 +1,19 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Translarr.Core.Application.Abstractions.Repositories;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
 
-public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsService settingsService, IConfiguration configuration) : IMediaScannerService
+public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsService settingsService, ILogger<MediaScannerService> logger, IConfiguration configuration) : IMediaScannerService
 {
     private readonly string _mediaRootPath = configuration.GetValue<string>("MediaRootPath") ?? throw new ArgumentException("MediaRootPath configuration not found");
     private readonly string[] _videoExtensions = [".mkv", ".mp4", ".avi", ".mov", ".m4v", ".webm", ".flv"];
 
     public async Task<ScanResultDto> ScanLibraryAsync()
     {
+        logger.LogInformation("Starting media scan");
         var startTime = DateTime.UtcNow;
         var result = new ScanResultDto();
         var errors = new List<string>();
@@ -30,16 +32,19 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Critical error during scan: {msg}", ex.Message);
             errors.Add($"Critical error during scan: {ex.Message}");
             result.Errors = errors;
             result.Duration = DateTime.UtcNow - startTime;
         }
 
+        logger.LogInformation("Media scan complete");
         return result;
     }
 
     private List<VideoFile> ScanFilesystemAsync(string mediaRootPath)
     {
+        logger.LogInformation("Scanning media files");
         var videoFiles = new List<VideoFile>();
 
         if (!Directory.Exists(mediaRootPath))
@@ -93,8 +98,7 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
             }
             catch (Exception ex)
             {
-                // Skip files that cause errors
-                Console.WriteLine($"Warning: Could not process file {filePath}: {ex.Message}");
+                logger.LogError(ex, "Could not process file {file}: {msg}", filePath, ex.Message);
             }
         }
 
@@ -103,6 +107,7 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
 
     private async Task AnalyzeVideoFilesAsync(List<VideoFile> videoFiles, string preferredLang, ScanResultDto result, List<string> errors)
     {
+        logger.LogInformation("Analyzing video files");
         foreach (var videoFile in videoFiles)
         {
             try
@@ -151,6 +156,7 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
             }
             catch (Exception ex)
             {
+                logger.LogError(ex, "Error processing {file}: {msg}", videoFile.FileName, ex.Message);
                 errors.Add($"Error processing {videoFile.FileName}: {ex.Message}");
                 result.ErrorFiles++;
             }
@@ -159,6 +165,7 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
 
     private async Task RemoveMissingEntriesAsync(List<VideoFile> videoFiles, ScanResultDto result, List<string> errors)
     {
+        logger.LogInformation("Removing stale entries");
         try
         {
             var existingEntries = await repository.GetAllAsync();
@@ -182,11 +189,13 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
 
             if (removedCount < entriesToRemove.Count)
             {
+                logger.LogWarning("Some database entries could not be removed during cleanup.");
                 errors.Add("Some database entries could not be removed during cleanup.");
             }
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to remove stale entries: {msg}", ex.Message);
             errors.Add($"Failed to remove stale entries: {ex.Message}");
         }
     }
