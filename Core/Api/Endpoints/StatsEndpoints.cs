@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Abstractions.Repositories;
+using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
-using Translarr.Core.Application.Services;
 
 namespace Translarr.Core.Api.Endpoints;
 
