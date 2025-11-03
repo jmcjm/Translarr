@@ -84,8 +84,8 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
                 .ToList();
             
             selectedStream = dialogOrUnknown.FirstOrDefault() ?? 
-                           nonSdhStreams.FirstOrDefault() ?? 
-                           (englishStreams.FirstOrDefault() ?? subtitleStreams.First())!;
+                             nonSdhStreams.FirstOrDefault() ?? 
+                             (englishStreams.FirstOrDefault() ?? subtitleStreams.First())!;
         }
 
         return new SubtitleStreamInfo
@@ -132,7 +132,6 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
             var currentSection = "";
             var skipSection = false;
 
-            // Sections to completely remove
             var sectionsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "[V4+ Styles]",
@@ -143,43 +142,61 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
                 "[Graphics]"
             };
 
+            var styleBlacklist = new[] { "ED", "OP", "Romaji", "Kanji", "FX", "fx", "KFX", "karaoke" };
+
             foreach (var line in lines)
             {
                 var trimmedLine = line.Trim();
 
-                // Detect section headers
                 if (trimmedLine.StartsWith('[') && trimmedLine.EndsWith(']'))
                 {
                     currentSection = trimmedLine;
                     skipSection = sectionsToRemove.Contains(currentSection);
 
                     if (!skipSection)
-                    {
                         cleanedLines.Add(line);
-                    }
+
                     continue;
                 }
 
-                // Skip lines in removed sections
                 if (skipSection)
-                {
                     continue;
-                }
 
-                // Process [Events] section - remove formatting tags
                 if (currentSection.Equals("[Events]", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (trimmedLine.StartsWith("Dialogue:", StringComparison.OrdinalIgnoreCase) ||
-                        trimmedLine.StartsWith("Comment:", StringComparison.OrdinalIgnoreCase))
+                    if (trimmedLine.StartsWith("Dialogue:", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Remove ASS formatting tags like {\i1}, {\b1}, {\pos(x,y)}, etc.
+                        // Usuń tagi formatujące
                         var cleanedLine = Regex.Replace(line, @"\{[^}]+\}", string.Empty);
+
+                        // Rozbij po przecinkach (ASS ma 9 pól przed tekstem)
+                        var parts = cleanedLine.Split(',', 10);
+                        if (parts.Length < 10)
+                            continue;
+
+                        var style = parts[3].Trim();
+                        var effect = parts[8].Trim();
+                        var text = parts[9].Trim();
+
+                        // Pomijaj linie z niechcianymi stylami lub efektami
+                        if (styleBlacklist.Any(bad => style.Contains(bad, StringComparison.OrdinalIgnoreCase)) ||
+                            styleBlacklist.Any(bad => effect.Contains(bad, StringComparison.OrdinalIgnoreCase)))
+                            continue;
+
+                        // Pomijaj linie bez liter (czyli krzaki typu "fx,s" albo puste)
+                        if (!Regex.IsMatch(text, @"\p{L}"))
+                            continue;
+
                         cleanedLines.Add(cleanedLine);
+                        continue;
+                    }
+                    else if (trimmedLine.StartsWith("Comment:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Pomijamy komentarze
                         continue;
                     }
                 }
 
-                // Keep all other lines
                 cleanedLines.Add(line);
             }
 
@@ -190,8 +207,7 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
             var cleanedSize = cleanedContent.Length;
             var reduction = originalSize > 0 ? (1 - (double)cleanedSize / originalSize) * 100 : 0;
 
-            logger.LogInformation("ASS file cleaned. Size reduced from {original}B to {cleaned}B ({reduction:F1}% reduction)",
-                originalSize, cleanedSize, reduction);
+            logger.LogInformation("ASS file cleaned. Size reduced from {original}B to {cleaned}B ({reduction:F1}% reduction)", originalSize, cleanedSize, reduction);
         }
         catch (Exception ex)
         {
