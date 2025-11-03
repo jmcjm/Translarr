@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using FFMpegCore;
 using Microsoft.Extensions.Logging;
 using Translarr.Core.Application.Abstractions.Services;
@@ -96,17 +98,117 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
         };
     }
 
-    public async Task<bool> ExtractSubtitlesAsync(string videoPath, int streamIndex, string outputPath)
+    public async Task<bool> ExtractSubtitlesAsync(string videoPath, int streamIndex, string outputPath, string codecName)
     {
         try
         {
-            logger.LogInformation("Extracting subtitles for {file} stream {stream}", videoPath, streamIndex);
-            // FFMpegCore doesn't have direct method for subtitle extraction
-            // We need to use FFMpegArguments
+            logger.LogInformation("Extracting subtitles for {file} stream {stream} with codec {codec}", videoPath, streamIndex, codecName);
+
             await FFMpegArguments
                 .FromFileInput(videoPath)
                 .OutputToFile(outputPath, true, options => options
                     .SelectStream(streamIndex)
+                    .ForceFormat(codecName))
+                .ProcessAsynchronously();
+
+            return File.Exists(outputPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error extracting subtitles: {ex}", ex.Message);
+            return false;
+        }
+    }
+
+    public async Task CleanAssFile(string assFilePath)
+    {
+        try
+        {
+            logger.LogInformation("Cleaning ASS file: {file}", assFilePath);
+
+            var content = await File.ReadAllTextAsync(assFilePath);
+            var lines = content.Split('\n');
+            var cleanedLines = new List<string>();
+            var currentSection = "";
+            var skipSection = false;
+
+            // Sections to completely remove
+            var sectionsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "[V4+ Styles]",
+                "[V4 Styles]",
+                "[Aegisub Project Garbage]",
+                "[Aegisub Extradata]",
+                "[Fonts]",
+                "[Graphics]"
+            };
+
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+
+                // Detect section headers
+                if (trimmedLine.StartsWith('[') && trimmedLine.EndsWith(']'))
+                {
+                    currentSection = trimmedLine;
+                    skipSection = sectionsToRemove.Contains(currentSection);
+
+                    if (!skipSection)
+                    {
+                        cleanedLines.Add(line);
+                    }
+                    continue;
+                }
+
+                // Skip lines in removed sections
+                if (skipSection)
+                {
+                    continue;
+                }
+
+                // Process [Events] section - remove formatting tags
+                if (currentSection.Equals("[Events]", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (trimmedLine.StartsWith("Dialogue:", StringComparison.OrdinalIgnoreCase) ||
+                        trimmedLine.StartsWith("Comment:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Remove ASS formatting tags like {\i1}, {\b1}, {\pos(x,y)}, etc.
+                        var cleanedLine = Regex.Replace(line, @"\{[^}]+\}", string.Empty);
+                        cleanedLines.Add(cleanedLine);
+                        continue;
+                    }
+                }
+
+                // Keep all other lines
+                cleanedLines.Add(line);
+            }
+
+            var cleanedContent = string.Join('\n', cleanedLines);
+            await File.WriteAllTextAsync(assFilePath, cleanedContent);
+
+            var originalSize = content.Length;
+            var cleanedSize = cleanedContent.Length;
+            var reduction = originalSize > 0 ? (1 - (double)cleanedSize / originalSize) * 100 : 0;
+
+            logger.LogInformation("ASS file cleaned. Size reduced from {original}B to {cleaned}B ({reduction:F1}% reduction)",
+                originalSize, cleanedSize, reduction);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error cleaning ASS file: {ex}", ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<bool> ConvertToSrt(string inputPath, string outputPath)
+    {
+        try
+        {
+            logger.LogInformation("Converting {input} to SRT format at {output}", inputPath, outputPath);
+
+            await FFMpegArguments
+                .FromFileInput(inputPath)
+                .OutputToFile(outputPath, true, options => options
                     .ForceFormat("srt"))
                 .ProcessAsynchronously();
 
@@ -114,7 +216,7 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error processing video: {ex}", ex.Message);
+            logger.LogError(ex, "Error converting to SRT: {ex}", ex.Message);
             return false;
         }
     }

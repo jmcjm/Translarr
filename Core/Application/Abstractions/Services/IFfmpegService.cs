@@ -6,6 +6,8 @@ public interface IFfmpegService
 {
     Task<object> GetVideoStreamsAsync(string videoPath);
     Task<SubtitleStreamInfo?> FindBestSubtitleStreamAsync(string videoPath);
-    Task<bool> ExtractSubtitlesAsync(string videoPath, int streamIndex, string outputPath);
+    Task<bool> ExtractSubtitlesAsync(string videoPath, int streamIndex, string outputPath, string codecName);
+    Task CleanAssFile(string assFilePath);
+    Task<bool> ConvertToSrt(string inputPath, string outputPath);
 }
 
