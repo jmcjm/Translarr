@@ -35,15 +35,16 @@ public class SubtitleTranslationService(
             }
             
             logger.LogInformation("Found {count} unprocessed entries", entries.Count);
-            
-            var model = await settingsService.GetSettingAsync("GeminiModel") ?? throw new ArgumentException("GeminiModel setting not found");
-            logger.LogInformation("Using Gemini model {model}", model);
+
+            // Get Gemini settings once before processing batch
+            var geminiSettings = await settingsService.GetGeminiSettingsAsync();
+            logger.LogInformation("Using Gemini model {model}", geminiSettings.Model);
 
             foreach (var entry in entries)
             {
                 try
                 {
-                    await ProcessEntryAsync(entry, result, model);
+                    await ProcessEntryAsync(entry, result, geminiSettings);
                 }
                 catch (Exception ex)
                 {
@@ -73,10 +74,10 @@ public class SubtitleTranslationService(
         return result;
     }
 
-    private async Task ProcessEntryAsync(SubtitleEntryDto entry, TranslationResultDto result, string model)
+    private async Task ProcessEntryAsync(SubtitleEntryDto entry, TranslationResultDto result, GeminiSettingsDto settings)
     {
         // 1. Check rate limit
-        if (!await apiUsageService.CanMakeRequestAsync(model))
+        if (!await apiUsageService.CanMakeRequestAsync(settings.Model))
         {
             throw new InvalidOperationException("API rate limit exceeded");
         }
@@ -137,14 +138,7 @@ public class SubtitleTranslationService(
                 subtitlePathForTranslation = srtPath;
             }
 
-            // TODO: make it into GeminiSettings model and pass it to ProcessEntryAsync instead of getting it from settings every single time
-            // 6. Get transcoding settings
-            var systemPrompt = await settingsService.GetSettingAsync("SystemPrompt") ?? throw new ArgumentException("SystemPrompt setting not found");
-            var temperatureStr = await settingsService.GetSettingAsync("Temperature") ?? throw new ArgumentException("Temperature setting not found");
-            var temperature = float.TryParse(temperatureStr, out var temp) ? temp : throw new ArgumentException($"Invalid value for setting Temperature, value: {temperatureStr}");
-            var preferredLang = await settingsService.GetSettingAsync("PreferredSubsLang") ?? throw new ArgumentException("PreferredSubsLang setting not found");
-
-            // 7. Read subtitles and validate size
+            // 6. Read subtitles and validate size
             var subtitleContent = await File.ReadAllTextAsync(subtitlePathForTranslation);
 
             // Size validation - Gemini free tier has token limits
@@ -157,11 +151,11 @@ public class SubtitleTranslationService(
                     "This file cannot be processed with the current Gemini API limits.");
             }
 
-            // 8. Call Gemini API
-            var translatedContent = await geminiClient.TranslateSubtitlesAsync(subtitleContent, systemPrompt, temperature, model);
+            // 7. Call Gemini API
+            var translatedContent = await geminiClient.TranslateSubtitlesAsync(subtitleContent, settings);
 
-            // 9. Save translated subtitles
-            var outputFileName = $"{baseFileName}.{preferredLang}.srt";
+            // 8. Save translated subtitles
+            var outputFileName = $"{baseFileName}.{settings.PreferredSubsLang}.srt";
             var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
             await File.WriteAllTextAsync(outputPath, translatedContent);
 
@@ -171,10 +165,10 @@ public class SubtitleTranslationService(
             entry.ErrorMessage = null;
             await repository.UpdateAsync(entry);
 
-            // 11. Log API usage
+            // 9. Log API usage
             await apiUsageService.RecordUsageAsync(new ApiUsageDto
             {
-                Model = model,
+                Model = settings.Model,
                 Date = DateTime.UtcNow
             });
 
