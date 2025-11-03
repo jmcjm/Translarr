@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup Label="Core Framework">
     <PackageVersion Include="ErrorOr" Version="2.0.1" />
+    <PackageVersion Include="MudBlazor.Markdown" Version="8.11.0" />
   </ItemGroup>
   <ItemGroup Label="ASP.NET Core and Web">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.10" />

@@ -1,3 +1,4 @@
+using MudBlazor;
 using MudBlazor.Services;
 using Translarr.Frontend.WebApp.Components;
 using Translarr.Frontend.WebApp.Services;
@@ -18,6 +19,7 @@ public class Program
 
         // Add MudBlazor services
         builder.Services.AddMudServices();
+        builder.Services.AddMudMarkdownServices();
 
         // Add Theme Service
         builder.Services.AddScoped<ThemeService>();

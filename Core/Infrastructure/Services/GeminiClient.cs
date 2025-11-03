@@ -32,4 +32,3 @@ public class GeminiClient : IGeminiClient
         return response.Text;
     }
 }
-

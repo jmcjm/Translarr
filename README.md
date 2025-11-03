@@ -49,17 +49,15 @@ The backend itself follows Clean Architecture principles, separating concerns in
 
 **Quick Start:**
 
-1.  **Clone the repository:**
+1.  **Copy compose.yaml and .env.example:**
+
     ```sh
-    git clone https://github.com/jmcjm/Translarr.git
-    cd Translarr
+    curl -o compose.yaml https://raw.githubusercontent.com/jmcjm/Translarr/refs/heads/main/compose.yaml
+    curl -o .env https://raw.githubusercontent.com/jmcjm/Translarr/refs/heads/main/env.example
     ```
 
 2.  **Configure environment:**
-    *   Copy the example environment file:
-    ```sh
-    cp env.example .env
-    ```
+
     *   Edit `.env` and set your media path:
     ```env
     MEDIA_ROOT_PATH=/path/to/your/media

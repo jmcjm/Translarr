@@ -68,7 +68,7 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
             ("GeminiModel", "gemini-2.5-pro", "Name of the Google Gemini model to use"),
             ("Temperature", "0.55", "AI model temperature (0.0 - 1.0). Lower value = more deterministic translation"),
             ("SystemPrompt", 
-                "You are an advanced subtitle translator to {PreferredSubsLang}. " +
+                "You are an advanced subtitle translator to polish. " +
                 "Translate the provided subtitles. " +
                 "Preserve the original formatting, tags, and most importantly, do not change timestamps.", 
                 "System prompt for the AI specifying how it should translate subtitles"),

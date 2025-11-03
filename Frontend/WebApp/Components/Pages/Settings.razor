@@ -52,9 +52,14 @@
                                       Label="System Prompt"
                                       Variant="Variant.Outlined"
                                       Lines="5"
+                                      AutoGrow
+                                      MaxLines="20"
                                       HelperText="@GetSettingDescription("SystemPrompt")"
                                       OnBlur="@(() => SaveSetting("SystemPrompt", _systemPrompt))" />
-
+                        
+                        <!-- TODO: Make it look better -->
+                        @* <MudMarkdown Value="@_systemPrompt" /> *@
+                        
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.Cable"
@@ -115,31 +120,32 @@
             </MudCard>
         </MudItem>
 
-        <MudItem xs="12">
-            <MudCard Elevation="2">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Automation (Worker Service Required)</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudStack Row="true" Spacing="4">
-                        <MudSwitch @bind-Value="@_autoLibraryScan"
-                                   Label="Auto Library Scan"
-                                   Color="Color.Primary"
-                                   Disabled="true" />
-                        
-                        <MudSwitch @bind-Value="@_autoTranslate"
-                                   Label="Auto Translate"
-                                   Color="Color.Primary"
-                                   Disabled="true" />
-                    </MudStack>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
-                        Note: Automation features require the Worker Service to be running (not yet available)
-                    </MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+        <!-- TODO: Implement automation -->
+        @* <MudItem xs="12"> *@
+        @*     <MudCard Elevation="2"> *@
+        @*         <MudCardHeader> *@
+        @*             <CardHeaderContent> *@
+        @*                 <MudText Typo="Typo.h6">Automation (Worker Service Required)</MudText> *@
+        @*             </CardHeaderContent> *@
+        @*         </MudCardHeader> *@
+        @*         <MudCardContent> *@
+        @*             <MudStack Row="true" Spacing="4"> *@
+        @*                 <MudSwitch @bind-Value="@_autoLibraryScan" *@
+        @*                            Label="Auto Library Scan" *@
+        @*                            Color="Color.Primary" *@
+        @*                            Disabled="true" /> *@
+        @*                  *@
+        @*                 <MudSwitch @bind-Value="@_autoTranslate" *@
+        @*                            Label="Auto Translate" *@
+        @*                            Color="Color.Primary" *@
+        @*                            Disabled="true" /> *@
+        @*             </MudStack> *@
+        @*             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2"> *@
+        @*                 Note: Automation features require the Worker Service to be running (not yet available) *@
+        @*             </MudText> *@
+        @*         </MudCardContent> *@
+        @*     </MudCard> *@
+        @* </MudItem> *@
     </MudGrid>
 }
 

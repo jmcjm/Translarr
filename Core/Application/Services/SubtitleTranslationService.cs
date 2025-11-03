@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Translarr.Core.Application.Abstractions.Repositories;
 using Translarr.Core.Application.Abstractions.Services;
@@ -5,7 +6,7 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
 
-public class SubtitleTranslationService(
+public partial class SubtitleTranslationService(
     ISubtitleEntryRepository repository,
     ISettingsService settingsService,
     IApiUsageService apiUsageService,
@@ -118,32 +119,19 @@ public class SubtitleTranslationService(
         try
         {
             // 5. Clean ASS files if needed
-            var subtitlePathForTranslation = extractedSubtitlePath;
-
             if (codecName.Equals("ass", StringComparison.OrdinalIgnoreCase) ||
                 codecName.Equals("ssa", StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogInformation("Detected ASS/SSA subtitle format, cleaning file before conversion");
                 await ffmpegService.CleanAssFile(extractedSubtitlePath);
-
-                // Convert cleaned ASS to SRT for translation
-                var srtPath = Path.ChangeExtension(extractedSubtitlePath, ".srt");
-                var conversionSuccess = await ffmpegService.ConvertToSrt(extractedSubtitlePath, srtPath);
-
-                if (!conversionSuccess)
-                {
-                    throw new InvalidOperationException("Failed to convert cleaned ASS to SRT");
-                }
-
-                subtitlePathForTranslation = srtPath;
             }
 
             // 6. Read subtitles and validate size
-            var subtitleContent = await File.ReadAllTextAsync(subtitlePathForTranslation);
+            var subtitleContent = await File.ReadAllTextAsync(extractedSubtitlePath);
 
             // Size validation - Gemini free tier has token limits
             // TODO - make it configurable
-            const int maxSizeBytes = 100 * 2048;
+            const int maxSizeBytes = 100 * 2548;
             if (subtitleContent.Length > maxSizeBytes)
             {
                 throw new InvalidOperationException(
@@ -151,9 +139,14 @@ public class SubtitleTranslationService(
                     "This file cannot be processed with the current Gemini API limits.");
             }
 
+            logger.LogInformation("Sending subtitles to Gemini API");
             // 7. Call Gemini API
             var translatedContent = await geminiClient.TranslateSubtitlesAsync(subtitleContent, settings);
-
+            logger.LogInformation("Received translated subtitles from Gemini API");
+            
+            // If the model returned answer in markdown code block or {} format, remove it
+            translatedContent = MyRegex().Replace(translatedContent, "").Trim();
+            
             // 8. Save translated subtitles
             var outputFileName = $"{baseFileName}.{settings.PreferredSubsLang}.srt";
             var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
@@ -184,4 +177,7 @@ public class SubtitleTranslationService(
             }
         }
     }
+
+    [GeneratedRegex(@"^```[\w-]*\n|```$", RegexOptions.Multiline)]
+    private static partial Regex MyRegex();
 }
