@@ -72,22 +72,13 @@ public static class SettingsEndpoints
     {
         try
         {
-            // Get settings for the test
-            var systemPrompt = await settingsService.GetSettingAsync("SystemPrompt") 
-                ?? "You are a helpful assistant.";
-            var temperatureStr = await settingsService.GetSettingAsync("Temperature") ?? "0.55";
-            var model = await settingsService.GetSettingAsync("GeminiModel") ?? "gemini-2.5-pro";
-            
-            TryParse(temperatureStr, out var temperature);
-            
+            // Get Gemini settings
+            var settings = await settingsService.GetGeminiSettingsAsync();
+
             // Try to make a simple test request to Gemini API
             const string testPrompt = "Hello, this is a test. Please respond with 'Your connection is working!'.";
-            
-            var response = await geminiClient.TranslateSubtitlesAsync(
-                testPrompt, 
-                systemPrompt, 
-                temperature, 
-                model);
+
+            var response = await geminiClient.TranslateSubtitlesAsync(testPrompt, settings);
 
             var result = new ApiTestResult
             {

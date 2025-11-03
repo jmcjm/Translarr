@@ -46,5 +46,36 @@ public class SettingsService(IAppSettingsRepository repository) : ISettingsServi
             UpdatedAt = s.UpdatedAt
         }).ToList();
     }
+
+    public async Task<GeminiSettingsDto> GetGeminiSettingsAsync()
+    {
+        var apiKey = await GetSettingAsync("GeminiApiKey")
+            ?? throw new ArgumentException("GeminiApiKey setting not found");
+
+        var model = await GetSettingAsync("GeminiModel")
+            ?? throw new ArgumentException("GeminiModel setting not found");
+
+        var systemPrompt = await GetSettingAsync("SystemPrompt")
+            ?? throw new ArgumentException("SystemPrompt setting not found");
+
+        var temperatureStr = await GetSettingAsync("Temperature")
+            ?? throw new ArgumentException("Temperature setting not found");
+
+        var temperature = float.TryParse(temperatureStr, out var temp)
+            ? temp
+            : throw new ArgumentException($"Invalid value for setting Temperature, value: {temperatureStr}");
+
+        var preferredLang = await GetSettingAsync("PreferredSubsLang")
+            ?? throw new ArgumentException("PreferredSubsLang setting not found");
+
+        return new GeminiSettingsDto
+        {
+            ApiKey = apiKey,
+            Model = model,
+            SystemPrompt = systemPrompt,
+            Temperature = temperature,
+            PreferredSubsLang = preferredLang
+        };
+    }
 }
 

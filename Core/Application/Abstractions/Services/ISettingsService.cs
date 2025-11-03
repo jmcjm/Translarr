@@ -7,5 +7,6 @@ public interface ISettingsService
     Task<string?> GetSettingAsync(string key);
     Task UpdateSettingAsync(string key, string value);
     Task<List<AppSettingDto>> GetAllSettingsAsync();
+    Task<GeminiSettingsDto> GetGeminiSettingsAsync();
 }
 
