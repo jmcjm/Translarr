@@ -6,6 +6,6 @@ public class TranslationResultDto
     public int SkippedNoSubtitles { get; set; }
     public int ErrorCount { get; set; }
     public TimeSpan Duration { get; set; }
-    public List<string> Errors { get; set; } = new();
+    public List<string> Errors { get; set; } = [];
 }
 

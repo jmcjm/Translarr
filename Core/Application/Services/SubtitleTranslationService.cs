@@ -99,13 +99,16 @@ public class SubtitleTranslationService(
 
         // 4. Extract subtitles to WorkDir
         var baseFileName = Path.GetFileNameWithoutExtension(entry.FileName);
-        var extractedSubtitlePath = Path.Combine(WorkDir, $"{baseFileName}.{subtitleStream.Language}.srt");
         
+        var codecName = subtitleStream.CodecName.ToLowerInvariant();
+
+        var extractedSubtitlePath = Path.Combine(WorkDir, $"{baseFileName}.{subtitleStream.Language}.{codecName}");
+
         // Make sure WorkDir exists
         Directory.CreateDirectory(WorkDir);
-        
-        var extractionSuccess = await ffmpegService.ExtractSubtitlesAsync(entry.FilePath, subtitleStream.StreamIndex, extractedSubtitlePath);
-        
+
+        var extractionSuccess = await ffmpegService.ExtractSubtitlesAsync(entry.FilePath, subtitleStream.StreamIndex, extractedSubtitlePath, codecName);
+
         if (!extractionSuccess)
         {
             throw new InvalidOperationException("Failed to extract subtitles from video file");
@@ -113,29 +116,62 @@ public class SubtitleTranslationService(
 
         try
         {
+            // 5. Clean ASS files if needed
+            var subtitlePathForTranslation = extractedSubtitlePath;
+
+            if (codecName.Equals("ass", StringComparison.OrdinalIgnoreCase) ||
+                codecName.Equals("ssa", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogInformation("Detected ASS/SSA subtitle format, cleaning file before conversion");
+                await ffmpegService.CleanAssFile(extractedSubtitlePath);
+
+                // Convert cleaned ASS to SRT for translation
+                var srtPath = Path.ChangeExtension(extractedSubtitlePath, ".srt");
+                var conversionSuccess = await ffmpegService.ConvertToSrt(extractedSubtitlePath, srtPath);
+
+                if (!conversionSuccess)
+                {
+                    throw new InvalidOperationException("Failed to convert cleaned ASS to SRT");
+                }
+
+                subtitlePathForTranslation = srtPath;
+            }
+
             // TODO: make it into GeminiSettings model and pass it to ProcessEntryAsync instead of getting it from settings every single time
-            // 5. Get transcoding settings
+            // 6. Get transcoding settings
             var systemPrompt = await settingsService.GetSettingAsync("SystemPrompt") ?? throw new ArgumentException("SystemPrompt setting not found");
             var temperatureStr = await settingsService.GetSettingAsync("Temperature") ?? throw new ArgumentException("Temperature setting not found");
             var temperature = float.TryParse(temperatureStr, out var temp) ? temp : throw new ArgumentException($"Invalid value for setting Temperature, value: {temperatureStr}");
             var preferredLang = await settingsService.GetSettingAsync("PreferredSubsLang") ?? throw new ArgumentException("PreferredSubsLang setting not found");
-            
-            // 6. Read subtitles and call Gemini API
-            var subtitleContent = await File.ReadAllTextAsync(extractedSubtitlePath);
+
+            // 7. Read subtitles and validate size
+            var subtitleContent = await File.ReadAllTextAsync(subtitlePathForTranslation);
+
+            // Size validation - Gemini free tier has token limits
+            // TODO - make it configurable
+            const int maxSizeBytes = 100 * 2048;
+            if (subtitleContent.Length > maxSizeBytes)
+            {
+                throw new InvalidOperationException(
+                    $"Subtitle file too large after cleaning: {subtitleContent.Length} bytes (max: {maxSizeBytes} bytes). " +
+                    "This file cannot be processed with the current Gemini API limits.");
+            }
+
+            // 8. Call Gemini API
             var translatedContent = await geminiClient.TranslateSubtitlesAsync(subtitleContent, systemPrompt, temperature, model);
 
-            // 7. Save translated subtitles
+            // 9. Save translated subtitles
             var outputFileName = $"{baseFileName}.{preferredLang}.srt";
             var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
             await File.WriteAllTextAsync(outputPath, translatedContent);
 
-            // 8. Update record
+            // 10. Update record
             entry.IsProcessed = true;
             entry.ProcessedAt = DateTime.UtcNow;
             entry.ErrorMessage = null;
             await repository.UpdateAsync(entry);
 
-            // 9. Log API usage
+            // 11. Log API usage
             await apiUsageService.RecordUsageAsync(new ApiUsageDto
             {
                 Model = model,
