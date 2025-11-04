@@ -23,39 +23,43 @@
                 </MudCardHeader>
                 <MudCardContent>
                     <MudStack Spacing="3">
-                        <MudTextField @bind-Value="_geminiApiKey"
+                        <MudTextField Value="@_geminiApiKey"
                                       Label="API Key"
                                       Variant="Variant.Outlined"
                                       InputType="InputType.Password"
                                       HelperText="@GetSettingDescription("GeminiApiKey")"
-                                      OnBlur="@(() => SaveSetting("GeminiApiKey", _geminiApiKey))" />
+                                      Immediate="true"
+                                      ValueChanged="@((string val) => { _geminiApiKey = val; MarkAsChanged(); })" />
 
-                        <MudTextField @bind-Value="_geminiModel"
+                        <MudTextField Value="@_geminiModel"
                                       Label="Model"
                                       Variant="Variant.Outlined"
                                       HelperText="@GetSettingDescription("GeminiModel")"
-                                      OnBlur="@(() => SaveSetting("GeminiModel", _geminiModel))" />
+                                      Immediate="true"
+                                      ValueChanged="@((string val) => { _geminiModel = val; MarkAsChanged(); })" />
 
-                        <MudSlider @bind-Value="@_temperature"
+                        <MudSlider Value="@_temperature"
                                    Min="0.0"
                                    Max="1.0"
                                    Step="0.05"
                                    ValueLabel="true"
-                                   Color="Color.Primary">
+                                   Color="Color.Primary"
+                                   ValueChanged="@((double val) => { _temperature = val; MarkAsChanged(); })">
                             Temperature: @_temperature.ToString("F2")
                         </MudSlider>
                         <MudText Typo="Typo.caption" Color="Color.Secondary">
                             @GetSettingDescription("Temperature")
                         </MudText>
 
-                        <MudTextField @bind-Value="_systemPrompt"
+                        <MudTextField Value="@_systemPrompt"
                                       Label="System Prompt"
                                       Variant="Variant.Outlined"
                                       Lines="5"
                                       AutoGrow
                                       MaxLines="20"
                                       HelperText="@GetSettingDescription("SystemPrompt")"
-                                      OnBlur="@(() => SaveSetting("SystemPrompt", _systemPrompt))" />
+                                      Immediate="true"
+                                      ValueChanged="@((string val) => { _systemPrompt = val; MarkAsChanged(); })" />
                         
                         <!-- TODO: Make it look better -->
                         @* <MudMarkdown Value="@_systemPrompt" /> *@
@@ -85,11 +89,12 @@
                 </MudCardHeader>
                 <MudCardContent>
                     <MudStack Spacing="3">
-                        <MudTextField @bind-Value="_preferredSubsLang"
+                        <MudTextField Value="@_preferredSubsLang"
                                       Label="Preferred Subtitle Language"
                                       Variant="Variant.Outlined"
                                       HelperText="@GetSettingDescription("PreferredSubsLang")"
-                                      OnBlur="@(() => SaveSetting("PreferredSubsLang", _preferredSubsLang))" />
+                                      Immediate="true"
+                                      ValueChanged="@((string val) => { _preferredSubsLang = val; MarkAsChanged(); })" />
                     </MudStack>
                 </MudCardContent>
             </MudCard>
@@ -102,19 +107,21 @@
                 </MudCardHeader>
                 <MudCardContent>
                     <MudStack Spacing="3">
-                        <MudNumericField @bind-Value="@_rateLimitPerMinute"
+                        <MudNumericField Value="@_rateLimitPerMinute"
                                          Label="Requests Per Minute"
                                          Variant="Variant.Outlined"
                                          Min="1"
                                          HelperText="@GetSettingDescription("RateLimitPerMinute")"
-                                         OnBlur="@(() => SaveRateLimitSetting("RateLimitPerMinute", _rateLimitPerMinute))" />
+                                         Immediate="true"
+                                         ValueChanged="@((int val) => { _rateLimitPerMinute = val; MarkAsChanged(); })" />
 
-                        <MudNumericField @bind-Value="@_rateLimitPerDay"
+                        <MudNumericField Value="@_rateLimitPerDay"
                                          Label="Requests Per Day"
                                          Variant="Variant.Outlined"
                                          Min="1"
                                          HelperText="@GetSettingDescription("RateLimitPerDay")"
-                                         OnBlur="@(() => SaveRateLimitSetting("RateLimitPerDay", _rateLimitPerDay))" />
+                                         Immediate="true"
+                                         ValueChanged="@((int val) => { _rateLimitPerDay = val; MarkAsChanged(); })" />
                     </MudStack>
                 </MudCardContent>
             </MudCard>
@@ -147,13 +154,34 @@
         @*     </MudCard> *@
         @* </MudItem> *@
     </MudGrid>
+
+    <MudPaper Class="d-flex justify-end gap-2 pa-4 mt-4" Elevation="0">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="SaveAllSettings"
+                   Disabled="@(!_hasUnsavedChanges || _isSaving)"
+                   Size="Size.Large">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>Save Settings</span>
+            }
+        </MudButton>
+    </MudPaper>
 }
 
 @code {
     private List<AppSettingDto>? _settings;
     private bool _isLoading = true;
     private bool _isTesting = false;
-    
+    private bool _isSaving = false;
+    private bool _hasUnsavedChanges = false;
+
     // Local variables for form fields
     private string _geminiApiKey = "";
     private string _geminiModel = "";
@@ -216,49 +244,57 @@
         return _settings?.FirstOrDefault(s => s.Key == key)?.Description ?? "";
     }
 
-    private async Task SaveSetting(string key, string value)
+    private void MarkAsChanged()
     {
-        try
-        {
-            // Special handling for Temperature
-            if (key == "Temperature")
-                value = _temperature.ToString("F2");
-            
-            var success = await SettingsService.UpdateSettingAsync(key, value);
-            
-            if (success)
-            {
-                Snackbar.Add($"{key} updated successfully", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add($"Failed to update {key}", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error updating {key}: {ex.Message}", Severity.Error);
-        }
+        _hasUnsavedChanges = true;
     }
 
-    private async Task SaveRateLimitSetting(string key, int value)
+    private async Task SaveAllSettings()
     {
         try
         {
-            var success = await SettingsService.UpdateSettingAsync(key, value.ToString());
-            
-            if (success)
+            _isSaving = true;
+            var errors = new List<string>();
+
+            // Save all settings
+            var settingsToSave = new Dictionary<string, string>
             {
-                Snackbar.Add($"{key} updated successfully", Severity.Success);
+                { "GeminiApiKey", _geminiApiKey },
+                { "GeminiModel", _geminiModel },
+                { "SystemPrompt", _systemPrompt },
+                { "PreferredSubsLang", _preferredSubsLang },
+                { "Temperature", _temperature.ToString("F2") },
+                { "RateLimitPerMinute", _rateLimitPerMinute.ToString() },
+                { "RateLimitPerDay", _rateLimitPerDay.ToString() }
+            };
+
+            foreach (var setting in settingsToSave)
+            {
+                var success = await SettingsService.UpdateSettingAsync(setting.Key, setting.Value);
+                if (!success)
+                {
+                    errors.Add(setting.Key);
+                }
+            }
+
+            if (errors.Any())
+            {
+                Snackbar.Add($"Failed to save: {string.Join(", ", errors)}", Severity.Error);
             }
             else
             {
-                Snackbar.Add($"Failed to update {key}", Severity.Error);
+                Snackbar.Add("All settings saved successfully", Severity.Success);
+                _hasUnsavedChanges = false;
+                await LoadSettings(); // Reload to ensure sync
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error updating {key}: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error saving settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
         }
     }
 
@@ -267,12 +303,15 @@
         try
         {
             _isTesting = true;
-            
-            // First save the current Temperature value
-            await SaveSetting("Temperature", _temperature.ToString("F2"));
-            
+
+            // Save settings before testing if there are unsaved changes
+            if (_hasUnsavedChanges)
+            {
+                await SaveAllSettings();
+            }
+
             var result = await SettingsService.TestApiConnectionAsync();
-            
+
             if (result?.Success == true)
             {
                 Snackbar.Add("API connection successful!", Severity.Success);
