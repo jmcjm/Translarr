@@ -1,4 +1,6 @@
 @page "/"
+@using Translarr.Core.Api.Models
+@using Translarr.Core.Application.Models
 @inject StatsApiService StatsService
 @inject LibraryApiService LibraryService
 @inject TranslationApiService TranslationService
@@ -99,8 +101,32 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent>
-                        <MudText>@_translationStatus.Progress</MudText>
-                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-2"/>
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.body1">
+                                <strong>@GetStepDisplayName(_translationStatus.CurrentStep)</strong>
+                            </MudText>
+
+                            @if (!string.IsNullOrEmpty(_translationStatus.CurrentFileName))
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    File: @_translationStatus.CurrentFileName
+                                </MudText>
+                            }
+
+                            @if (_translationStatus.TotalFiles > 0)
+                            {
+                                var progress = (double)_translationStatus.ProcessedFiles / _translationStatus.TotalFiles * 100;
+                                <MudText Typo="Typo.body2">
+                                    Progress: @_translationStatus.ProcessedFiles / @_translationStatus.TotalFiles files
+                                    (@progress.ToString("F1")%)
+                                </MudText>
+                                <MudProgressLinear Value="@progress" Color="Color.Primary" Size="Size.Large" Class="mt-2"/>
+                            }
+                            else
+                            {
+                                <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-2"/>
+                            }
+                        </MudStack>
                     </MudCardContent>
                 </MudCard>
             </MudItem>
@@ -222,6 +248,23 @@
         {
             // Ignore errors during polling
         }
+    }
+
+    private string GetStepDisplayName(TranslationStep step)
+    {
+        return step switch
+        {
+            TranslationStep.Starting => "Starting translation...",
+            TranslationStep.CheckingRateLimit => "Checking rate limit...",
+            TranslationStep.FindingSubtitles => "Finding subtitles...",
+            TranslationStep.ExtractingSubtitles => "Extracting subtitles...",
+            TranslationStep.CleaningSubtitles => "Cleaning subtitles...",
+            TranslationStep.ValidatingSize => "Validating file size...",
+            TranslationStep.TranslatingWithGemini => "Translating with Gemini...",
+            TranslationStep.SavingSubtitles => "Saving translated subtitles...",
+            TranslationStep.Completed => "Completed!",
+            _ => "Processing..."
+        };
     }
 
     public void Dispose()

@@ -10,5 +10,11 @@ public class TranslationStatus
     public string Progress { get; set; } = string.Empty;
     public TranslationResultDto? Result { get; set; }
     public string? Error { get; set; }
+
+    // Detailed progress info
+    public int TotalFiles { get; set; }
+    public int ProcessedFiles { get; set; }
+    public string? CurrentFileName { get; set; }
+    public TranslationStep CurrentStep { get; set; }
 }
 

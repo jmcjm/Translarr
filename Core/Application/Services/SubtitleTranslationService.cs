@@ -17,7 +17,9 @@ public partial class SubtitleTranslationService(
 {
     private const string WorkDir = "/tmp/translarr";
 
-    public async Task<TranslationResultDto> TranslateNextBatchAsync(int batchSize = 100)
+    public async Task<TranslationResultDto> TranslateNextBatchAsync(
+        int batchSize = 100,
+        Action<TranslationProgressUpdate>? onProgressUpdate = null)
     {
         logger.LogInformation("Starting translation");
         var startTime = DateTime.UtcNow;
@@ -25,27 +27,31 @@ public partial class SubtitleTranslationService(
         var errors = new List<string>();
 
         try
-        { 
+        {
             // Get files to process
             var entries = await repository.GetUnprocessedWantedAsync(batchSize);
-            
+
             if (entries.Count == 0)
             {
                 logger.LogInformation("No unprocessed entries found");
                 return result;
             }
-            
+
             logger.LogInformation("Found {count} unprocessed entries", entries.Count);
 
             // Get Gemini settings once before processing batch
             var geminiSettings = await settingsService.GetGeminiSettingsAsync();
             logger.LogInformation("Using Gemini model {model}", geminiSettings.Model);
 
+            var totalFiles = entries.Count;
+            var processedCount = 0;
+
             foreach (var entry in entries)
             {
                 try
                 {
-                    await ProcessEntryAsync(entry, result, geminiSettings);
+                    await ProcessEntryAsync(entry, result, geminiSettings, processedCount, totalFiles, onProgressUpdate);
+                    processedCount++;
                 }
                 catch (Exception ex)
                 {
@@ -57,6 +63,7 @@ public partial class SubtitleTranslationService(
                     // File will be processed again in next attempt
                     entry.ErrorMessage = ex.Message;
                     await repository.UpdateAsync(entry);
+                    processedCount++;
                 }
             }
 
@@ -75,15 +82,33 @@ public partial class SubtitleTranslationService(
         return result;
     }
 
-    private async Task ProcessEntryAsync(SubtitleEntryDto entry, TranslationResultDto result, GeminiSettingsDto settings)
+    private async Task ProcessEntryAsync(
+        SubtitleEntryDto entry,
+        TranslationResultDto result,
+        GeminiSettingsDto settings,
+        int currentIndex,
+        int totalFiles,
+        Action<TranslationProgressUpdate>? onProgressUpdate)
     {
+        void ReportProgress(TranslationStep step)
+        {
+            onProgressUpdate?.Invoke(new TranslationProgressUpdate(
+                TotalFiles: totalFiles,
+                ProcessedFiles: currentIndex,
+                CurrentFileName: entry.FileName,
+                CurrentStep: step
+            ));
+        }
+
         // 1. Check rate limit
+        ReportProgress(TranslationStep.CheckingRateLimit);
         if (!await apiUsageService.CanMakeRequestAsync(settings.Model))
         {
             throw new InvalidOperationException("API rate limit exceeded");
         }
-        
+
         // 3. Find best subtitle stream
+        ReportProgress(TranslationStep.FindingSubtitles);
         var subtitleStream = await ffmpegService.FindBestSubtitleStreamAsync(entry.FilePath);
         
         if (subtitleStream == null)
@@ -100,8 +125,9 @@ public partial class SubtitleTranslationService(
         }
 
         // 4. Extract subtitles to WorkDir
+        ReportProgress(TranslationStep.ExtractingSubtitles);
         var baseFileName = Path.GetFileNameWithoutExtension(entry.FileName);
-        
+
         var codecName = subtitleStream.CodecName.ToLowerInvariant();
 
         var extractedSubtitlePath = Path.Combine(WorkDir, $"{baseFileName}.{subtitleStream.Language}.{codecName}");
@@ -122,11 +148,13 @@ public partial class SubtitleTranslationService(
             if (codecName.Equals("ass", StringComparison.OrdinalIgnoreCase) ||
                 codecName.Equals("ssa", StringComparison.OrdinalIgnoreCase))
             {
+                ReportProgress(TranslationStep.CleaningSubtitles);
                 logger.LogInformation("Detected ASS/SSA subtitle format, cleaning file before conversion");
                 await ffmpegService.CleanAssFile(extractedSubtitlePath);
             }
 
             // 6. Read subtitles and validate size
+            ReportProgress(TranslationStep.ValidatingSize);
             var subtitleContent = await File.ReadAllTextAsync(extractedSubtitlePath);
 
             // Size validation - Gemini free tier has token limits
@@ -141,13 +169,15 @@ public partial class SubtitleTranslationService(
 
             logger.LogInformation("Sending subtitles to Gemini API");
             // 7. Call Gemini API
+            ReportProgress(TranslationStep.TranslatingWithGemini);
             var translatedContent = await geminiClient.TranslateSubtitlesAsync(subtitleContent, settings);
             logger.LogInformation("Received translated subtitles from Gemini API");
-            
+
             // If the model returned answer in markdown code block or {} format, remove it
             translatedContent = MyRegex().Replace(translatedContent, "").Trim();
-            
+
             // 8. Save translated subtitles
+            ReportProgress(TranslationStep.SavingSubtitles);
             var outputFileName = $"{baseFileName}.{settings.PreferredSubsLang}.srt";
             var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
             await File.WriteAllTextAsync(outputPath, translatedContent);

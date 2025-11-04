@@ -60,8 +60,24 @@ public static class TranslationEndpoints
                 // Create new scope for background task
                 using var scope = serviceScopeFactory.CreateScope();
                 var translationService = scope.ServiceProvider.GetRequiredService<ISubtitleTranslationService>();
-                
-                var result = await translationService.TranslateNextBatchAsync(batchSize);
+
+                // Progress callback that updates _currentStatus
+                void OnProgressUpdate(TranslationProgressUpdate update)
+                {
+                    lock (StatusLock)
+                    {
+                        if (_currentStatus != null)
+                        {
+                            _currentStatus.TotalFiles = update.TotalFiles;
+                            _currentStatus.ProcessedFiles = update.ProcessedFiles;
+                            _currentStatus.CurrentFileName = update.CurrentFileName;
+                            _currentStatus.CurrentStep = update.CurrentStep;
+                            _currentStatus.Progress = FormatProgress(update);
+                        }
+                    }
+                }
+
+                var result = await translationService.TranslateNextBatchAsync(batchSize, OnProgressUpdate);
 
                 lock (StatusLock)
                 {
@@ -71,6 +87,9 @@ public static class TranslationEndpoints
                         StartedAt = _currentStatus.StartedAt,
                         CompletedAt = DateTime.UtcNow,
                         Progress = "Completed",
+                        CurrentStep = TranslationStep.Completed,
+                        TotalFiles = _currentStatus.TotalFiles,
+                        ProcessedFiles = _currentStatus.TotalFiles,
                         Result = result
                     };
                 }
@@ -121,6 +140,25 @@ public static class TranslationEndpoints
 
             return Results.Ok(_currentStatus);
         }
+    }
+
+    private static string FormatProgress(TranslationProgressUpdate update)
+    {
+        var stepText = update.CurrentStep switch
+        {
+            TranslationStep.Starting => "Starting",
+            TranslationStep.CheckingRateLimit => "Checking rate limit",
+            TranslationStep.FindingSubtitles => "Finding subtitles",
+            TranslationStep.ExtractingSubtitles => "Extracting subtitles",
+            TranslationStep.CleaningSubtitles => "Cleaning subtitles",
+            TranslationStep.ValidatingSize => "Validating size",
+            TranslationStep.TranslatingWithGemini => "Translating with Gemini",
+            TranslationStep.SavingSubtitles => "Saving subtitles",
+            TranslationStep.Completed => "Completed",
+            _ => "Processing"
+        };
+
+        return $"[{update.ProcessedFiles + 1}/{update.TotalFiles}] {stepText}: {update.CurrentFileName}";
     }
 }
 
