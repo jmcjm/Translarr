@@ -171,6 +171,58 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         return entries.Count;
     }
 
+    /// <inheritdoc />
+    public async Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted)
+    {
+        var query = context.SubtitleEntries.Where(e => e.Series == seriesName);
+
+        if (seasonName != null)
+            query = query.Where(e => e.Season == seasonName);
+
+        return await query.ExecuteUpdateAsync(setters =>
+            setters.SetProperty(e => e.IsWanted, isWanted));
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SeriesGroupDto>> GetSeriesGroupsAsync()
+    {
+        // Group by series and season, calculate stats
+        var groupedData = await context.SubtitleEntries
+            .AsNoTracking()
+            .GroupBy(e => new { e.Series, e.Season })
+            .Select(g => new
+            {
+                g.Key.Series,
+                g.Key.Season,
+                TotalFiles = g.Count(),
+                WantedFiles = g.Count(e => e.IsWanted),
+                ProcessedFiles = g.Count(e => e.IsProcessed)
+            })
+            .ToListAsync();
+
+        // Group by series
+        var seriesGroups = groupedData
+            .GroupBy(g => g.Series)
+            .Select(sg => new SeriesGroupDto
+            {
+                SeriesName = sg.Key,
+                TotalFiles = sg.Sum(s => s.TotalFiles),
+                WantedFiles = sg.Sum(s => s.WantedFiles),
+                ProcessedFiles = sg.Sum(s => s.ProcessedFiles),
+                Seasons = sg.Select(s => new SeasonGroupDto
+                {
+                    SeasonName = s.Season,
+                    TotalFiles = s.TotalFiles,
+                    WantedFiles = s.WantedFiles,
+                    ProcessedFiles = s.ProcessedFiles
+                }).ToList()
+            })
+            .OrderBy(s => s.SeriesName)
+            .ToList();
+
+        return seriesGroups;
+    }
+
     private static SubtitleEntryDto MapToDto(SubtitleEntryDao dao)
     {
         return new SubtitleEntryDto

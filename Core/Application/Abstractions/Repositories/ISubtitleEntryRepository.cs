@@ -71,5 +71,20 @@ public interface ISubtitleEntryRepository
     /// <param name="ids">Collection of subtitle entry IDs to delete.</param>
     /// <returns>The number of entries removed.</returns>
     Task<int> DeleteByIdsAsync(IEnumerable<int> ids);
+
+    /// <summary>
+    /// Bulk updates the IsWanted flag for entries matching series and optional season.
+    /// </summary>
+    /// <param name="seriesName">The name of the series.</param>
+    /// <param name="seasonName">The name of the season (null to update entire series).</param>
+    /// <param name="isWanted">The new wanted status.</param>
+    /// <returns>The number of entries updated.</returns>
+    Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted);
+
+    /// <summary>
+    /// Retrieves series groups with statistics for UI display.
+    /// </summary>
+    /// <returns>The task result contains a list of <see cref="SeriesGroupDto"/> with nested season statistics.</returns>
+    Task<List<SeriesGroupDto>> GetSeriesGroupsAsync();
 }
 

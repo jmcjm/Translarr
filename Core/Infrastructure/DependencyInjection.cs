@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<ISubtitleEntryRepository, SubtitleEntryRepository>();
         services.AddScoped<IAppSettingsRepository, AppSettingsRepository>();
         services.AddScoped<IApiUsageRepository, ApiUsageRepository>();
+        services.AddScoped<ISeriesWatchConfigRepository, SeriesWatchConfigRepository>();
         
         // Application Services
         services.AddScoped<ILibraryService, LibraryService>();
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IApiUsageService, ApiUsageService>();
         services.AddScoped<IMediaScannerService, MediaScannerService>();
         services.AddScoped<ISubtitleTranslationService, SubtitleTranslationService>();
+        services.AddScoped<ISeriesWatchService, SeriesWatchService>();
         
         // Infrastructure Services
         services.AddScoped<IFfmpegService, FfmpegService>();

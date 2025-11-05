@@ -6,7 +6,12 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
 
-public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsService settingsService, ILogger<MediaScannerService> logger, IConfiguration configuration) : IMediaScannerService
+public class MediaScannerService(
+    ISubtitleEntryRepository repository,
+    ISettingsService settingsService,
+    ISeriesWatchService seriesWatchService,
+    ILogger<MediaScannerService> logger,
+    IConfiguration configuration) : IMediaScannerService
 {
     private readonly string _mediaRootPath = configuration.GetValue<string>("MediaRootPath") ?? throw new ArgumentException("MediaRootPath configuration not found");
     private readonly string[] _videoExtensions = [".mkv", ".mp4", ".avi", ".mov", ".m4v", ".webm", ".flv"];
@@ -119,6 +124,11 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
 
                 if (existingEntry == null)
                 {
+                    // Check if series/season is watched for auto-marking
+                    var shouldAutoMarkWanted = await seriesWatchService.ShouldAutoMarkWantedAsync(
+                        videoFile.SeriesNumber,
+                        videoFile.SeasonNumber);
+
                     // New file
                     var newEntry = new SubtitleEntryDto
                     {
@@ -127,7 +137,7 @@ public class MediaScannerService(ISubtitleEntryRepository repository, ISettingsS
                         Series = videoFile.SeriesNumber,
                         Season = videoFile.SeasonNumber,
                         IsProcessed = false,
-                        IsWanted = false,
+                        IsWanted = shouldAutoMarkWanted,
                         ForceProcess = false,
                         AlreadyHad = alreadyHas,
                         LastScanned = DateTime.UtcNow

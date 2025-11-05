@@ -40,6 +40,12 @@ public static class LibraryEndpoints
             .Produces<SubtitleEntryDto>()
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPut("/bulk/wanted", BulkUpdateWantedStatus)
+            .WithName("BulkUpdateWantedStatus")
+            .WithOpenApi()
+            .Produces<BulkUpdateResult>()
+            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest);
+
         return group;
     }
 
@@ -97,4 +103,20 @@ public static class LibraryEndpoints
         
         return Results.Ok(result.Value);
     }
+
+    private static async Task<IResult> BulkUpdateWantedStatus(
+        [FromQuery] string series,
+        [FromQuery] string? season,
+        [FromQuery] bool wanted,
+        [FromServices] ILibraryService service)
+    {
+        var result = await service.BulkSetWantedAsync(series, season, wanted);
+
+        if (result.IsError)
+            return ErrorTypeMapper.MapErrorsToProblemResponse(result);
+
+        return Results.Ok(new BulkUpdateResult(result.Value));
+    }
 }
+
+public record BulkUpdateResult(int UpdatedCount);
