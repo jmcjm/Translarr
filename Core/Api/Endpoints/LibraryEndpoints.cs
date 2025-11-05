@@ -118,5 +118,3 @@ public static class LibraryEndpoints
         return Results.Ok(new BulkUpdateResult(result.Value));
     }
 }
-
-public record BulkUpdateResult(int UpdatedCount);

@@ -4,21 +4,14 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Frontend.WebApp.Services;
 
-public class StatsApiService
+public class StatsApiService(IHttpClientFactory httpClientFactory)
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public StatsApiService(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
     public async Task<List<ApiUsageDto>?> GetApiUsageStatsAsync(
         DateTime? from = null, 
         DateTime? to = null, 
         string? model = null)
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         
         var queryParams = new List<string>();
 
@@ -39,7 +32,7 @@ public class StatsApiService
 
     public async Task<LibraryStats?> GetLibraryStatsAsync()
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.GetAsync("/api/stats/library-stats");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<LibraryStats>();

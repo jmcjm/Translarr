@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Translarr.Core.Api.Helpers;
+using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
 
@@ -74,5 +75,3 @@ public static class SeriesWatchEndpoints
         return Results.Ok(groups);
     }
 }
-
-public record SetAutoWatchResult(int FilesMarkedWanted);
