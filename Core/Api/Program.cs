@@ -93,6 +93,10 @@ public static class Program
             .MapStatsEndpoints()
             .WithTags("Statistics");
 
+        apiGroup.MapGroup("/series")
+            .MapSeriesWatchEndpoints()
+            .WithTags("Series Watch");
+
         app.Run();
     }
 }

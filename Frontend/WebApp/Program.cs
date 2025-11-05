@@ -38,6 +38,7 @@ public class Program
         builder.Services.AddScoped<TranslationApiService>();
         builder.Services.AddScoped<SettingsApiService>();
         builder.Services.AddScoped<StatsApiService>();
+        builder.Services.AddScoped<SeriesWatchApiService>();
 
         var app = builder.Build();
 

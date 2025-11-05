@@ -9,6 +9,7 @@ public class TranslarrDbContext(DbContextOptions<TranslarrDbContext> options) : 
     public DbSet<ApiUsageDao> ApiUsage { get; set; }
     public DbSet<SubtitleEntryDao> SubtitleEntries { get; set; }
     public DbSet<AppSettingsDao> AppSettings { get; set; }
+    public DbSet<SeriesWatchConfigDao> SeriesWatchConfigs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -17,5 +18,6 @@ public class TranslarrDbContext(DbContextOptions<TranslarrDbContext> options) : 
         modelBuilder.ApplyConfiguration(new ApiUsageConfiguration());
         modelBuilder.ApplyConfiguration(new SubtitleEntryConfiguration());
         modelBuilder.ApplyConfiguration(new AppSettingsConfiguration());
+        modelBuilder.ApplyConfiguration(new SeriesWatchConfigConfiguration());
     }
 }

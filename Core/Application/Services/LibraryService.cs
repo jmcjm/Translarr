@@ -63,4 +63,14 @@ public class LibraryService(ISubtitleEntryRepository repository) : ILibraryServi
         
         return await repository.GetPagedAsync(page, pageSize, isProcessed, isWanted, alreadyHas, search);
     }
+
+    /// <inheritdoc />
+    public async Task<ErrorOr<int>> BulkSetWantedAsync(string seriesName, string? seasonName, bool isWanted)
+    {
+        if (string.IsNullOrWhiteSpace(seriesName))
+            return Error.Validation("LibraryService.BulkSetWantedAsync", "Series name cannot be empty.");
+
+        var updatedCount = await repository.BulkUpdateWantedAsync(seriesName, seasonName, isWanted);
+        return updatedCount;
+    }
 }

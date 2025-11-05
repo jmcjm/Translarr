@@ -58,4 +58,13 @@ public interface ILibraryService
         bool? isWanted = null,
         bool? alreadyHas = null,
         string? search = null);
+
+    /// <summary>
+    /// Bulk updates the IsWanted flag for all entries matching series and optional season.
+    /// </summary>
+    /// <param name="seriesName">The name of the series.</param>
+    /// <param name="seasonName">The name of the season (null to update entire series).</param>
+    /// <param name="isWanted">The new wanted status.</param>
+    /// <returns>The task result contains the number of entries updated, or an error.</returns>
+    Task<ErrorOr<int>> BulkSetWantedAsync(string seriesName, string? seasonName, bool isWanted);
 }
