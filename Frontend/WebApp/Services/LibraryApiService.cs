@@ -4,18 +4,11 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Frontend.WebApp.Services;
 
-public class LibraryApiService
+public class LibraryApiService(IHttpClientFactory httpClientFactory)
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public LibraryApiService(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
     public async Task<ScanResultDto?> ScanLibraryAsync()
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.PostAsync("/api/library/scan", null);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ScanResultDto>();
@@ -29,7 +22,7 @@ public class LibraryApiService
         bool? alreadyHas = null,
         string? search = null)
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         
         var queryParams = new List<string>
         {
@@ -57,7 +50,7 @@ public class LibraryApiService
 
     public async Task<SubtitleEntryDto?> GetEntryByIdAsync(int id)
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.GetAsync($"/api/library/entries/{id}");
         
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -69,7 +62,7 @@ public class LibraryApiService
 
     public async Task<SubtitleEntryDto?> UpdateWantedStatusAsync(int id, bool isWanted)
     {
-        var client = _httpClientFactory.CreateClient("TranslarrApi");
+        var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.PatchAsJsonAsync($"/api/library/entries/{id}/wanted", 
             new UpdateWantedRequest(isWanted));
         
