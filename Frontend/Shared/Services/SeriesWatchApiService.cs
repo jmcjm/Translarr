@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Models;
 
-namespace Translarr.Frontend.WebApp.Services;
+namespace Translarr.Frontend.Shared.Services;
 
 public class SeriesWatchApiService(IHttpClientFactory httpClientFactory)
 {

@@ -1,6 +1,7 @@
 using MudBlazor;
 using MudBlazor.Services;
 using Translarr.Frontend.WebApp.Components;
+using Translarr.Frontend.Shared.Services;
 using Translarr.Frontend.WebApp.Services;
 
 namespace Translarr.Frontend.WebApp;
