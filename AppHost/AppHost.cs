@@ -24,4 +24,10 @@ builder.AddProject<Projects.WebApp>("Translarr-Web")
     // .WithHealthCheck("/health")
     .WithExternalHttpEndpoints();
 
+builder.AddProject<Projects.HavitWebApp>("Translarr-Havit-Web")
+    .WaitFor(api)
+    .WithReference(api)
+    // .WithHealthCheck("/health")
+    .WithExternalHttpEndpoints();
+
 builder.Build().Run();

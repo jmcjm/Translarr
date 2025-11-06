@@ -1,0 +1,296 @@
+@page "/series"
+@inject SeriesWatchApiService SeriesWatchService
+@inject IHxMessengerService Messenger
+
+<PageTitle>Series Management - Translarr</PageTitle>
+
+<h1 class="mb-4">Series Management</h1>
+
+<p class="text-secondary mb-4">
+    Manage auto-watch settings and bulk operations for your series and seasons.
+</p>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+
+@if (_seriesGroups != null && _seriesGroups.Any())
+{
+    <HxCard CssClass="mb-4">
+        <BodyTemplate>
+            <div class="input-group">
+                <input type="text"
+                       class="form-control"
+                       placeholder="Search series..."
+                       @bind="_searchText"
+                       @bind:event="oninput"
+                       @onkeyup="OnSearchKeyUp" />
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+            </div>
+        </BodyTemplate>
+    </HxCard>
+
+    <div class="row g-3">
+        @foreach (var series in _filteredSeriesGroups)
+        {
+            <div class="col-12">
+                <HxCard>
+                    <HeaderTemplate>
+                        <div class="d-flex align-items-center justify-content-between w-100">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-tv fs-5"></i>
+                                <h5 class="mb-0">@series.SeriesName</h5>
+                                @if (series.IsWatched)
+                                {
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-eye me-1"></i>Watched
+                                    </span>
+                                }
+                            </div>
+                            <button class="btn btn-link p-0" @onclick="() => ToggleSeriesExpanded(series.SeriesName)">
+                                <i class="bi @(_expandedSeries.Contains(series.SeriesName) ? "bi-chevron-up" : "bi-chevron-down") fs-4"></i>
+                            </button>
+                        </div>
+                    </HeaderTemplate>
+                    <BodyTemplate>
+                        <div class="d-flex gap-4 mb-3 flex-wrap">
+                            <span class="text-secondary">
+                                <strong>Total:</strong> @series.TotalFiles files
+                            </span>
+                            <span class="text-warning">
+                                <strong>Wanted:</strong> @series.WantedFiles
+                            </span>
+                            <span class="text-success">
+                                <strong>Processed:</strong> @series.ProcessedFiles
+                            </span>
+                        </div>
+
+                        <div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       role="switch"
+                                       id="watch-@series.SeriesName.GetHashCode()"
+                                       checked="@series.IsWatched"
+                                       @onchange="@(async (e) => await ToggleSeriesWatch(series.SeriesName, (bool)e.Value!))" />
+                                <label class="form-check-label" for="watch-@series.SeriesName.GetHashCode()">
+                                    Auto-watch entire series
+                                </label>
+                            </div>
+
+                            <button class="btn btn-sm btn-outline-primary"
+                                    @onclick="@(() => BulkMarkWanted(series.SeriesName, null, true))">
+                                <i class="bi bi-check-circle me-1"></i>Mark All Wanted
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    @onclick="@(() => BulkMarkWanted(series.SeriesName, null, false))">
+                                <i class="bi bi-x-circle me-1"></i>Mark All Unwanted
+                            </button>
+                        </div>
+
+                        @if (_expandedSeries.Contains(series.SeriesName))
+                        {
+                            <hr class="my-3" />
+                            <h6 class="mb-3">Seasons</h6>
+
+                            <div class="row g-3">
+                                @foreach (var season in series.Seasons)
+                                {
+                                    <div class="col-12 col-md-6">
+                                        <div class="card border p-3">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <h6 class="mb-0">@season.SeasonName</h6>
+                                                @if (season.IsWatched)
+                                                {
+                                                    <span class="badge bg-info">
+                                                        <i class="bi bi-eye me-1"></i>Watched
+                                                    </span>
+                                                }
+                                            </div>
+
+                                            <p class="text-secondary small mb-2">
+                                                @season.TotalFiles files | @season.WantedFiles wanted | @season.ProcessedFiles processed
+                                            </p>
+
+                                            @if (!series.IsWatched)
+                                            {
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input"
+                                                           type="checkbox"
+                                                           role="switch"
+                                                           id="watch-@series.SeriesName.GetHashCode()-@season.SeasonName.GetHashCode()"
+                                                           checked="@season.IsWatched"
+                                                           @onchange="@(async (e) => await ToggleSeasonWatch(series.SeriesName, season.SeasonName, (bool)e.Value!))" />
+                                                    <label class="form-check-label" for="watch-@series.SeriesName.GetHashCode()-@season.SeasonName.GetHashCode()">
+                                                        Auto-watch season
+                                                    </label>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-info d-block mb-2">
+                                                    <i class="bi bi-info-circle me-1"></i>Auto-watch inherited from series
+                                                </small>
+                                            }
+
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                        @onclick="@(() => BulkMarkWanted(series.SeriesName, season.SeasonName, true))">
+                                                    <i class="bi bi-check-circle me-1"></i>Mark Wanted
+                                                </button>
+
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                        @onclick="@(() => BulkMarkWanted(series.SeriesName, season.SeasonName, false))">
+                                                    <i class="bi bi-x-circle me-1"></i>Mark Unwanted
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </BodyTemplate>
+                </HxCard>
+            </div>
+        }
+    </div>
+}
+else if (!_isLoading)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>No series found. Run a library scan to populate your media library.
+    </div>
+}
+
+@code {
+    private List<SeriesGroupDto>? _seriesGroups;
+    private List<SeriesGroupDto> _filteredSeriesGroups = new();
+    private HashSet<string> _expandedSeries = new();
+    private bool _isLoading = true;
+    private string _searchText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSeriesGroups();
+    }
+
+    private async Task LoadSeriesGroups()
+    {
+        try
+        {
+            _isLoading = true;
+            _seriesGroups = await SeriesWatchService.GetSeriesGroupsAsync() ?? new();
+            FilterSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error loading series: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void FilterSeriesGroups()
+    {
+        if (_seriesGroups == null)
+        {
+            _filteredSeriesGroups = new();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            _filteredSeriesGroups = _seriesGroups;
+        }
+        else
+        {
+            var search = _searchText.ToLowerInvariant();
+            _filteredSeriesGroups = _seriesGroups
+                .Where(s => s.SeriesName.ToLowerInvariant().Contains(search))
+                .ToList();
+        }
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        FilterSeriesGroups();
+    }
+
+    private void ToggleSeriesExpanded(string seriesName)
+    {
+        if (_expandedSeries.Contains(seriesName))
+            _expandedSeries.Remove(seriesName);
+        else
+            _expandedSeries.Add(seriesName);
+    }
+
+    private async Task ToggleSeriesWatch(string seriesName, bool watched)
+    {
+        try
+        {
+            var result = await SeriesWatchService.SetAutoWatchAsync(seriesName, null, watched);
+            if (result != null && watched)
+            {
+                Messenger.AddInformation($"Auto-watch enabled for '{seriesName}'. {result.FilesMarkedWanted} files marked as wanted.");
+            }
+            else if (!watched)
+            {
+                Messenger.AddInformation($"Auto-watch disabled for '{seriesName}'.");
+            }
+
+            await LoadSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error toggling watch: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleSeasonWatch(string seriesName, string seasonName, bool watched)
+    {
+        try
+        {
+            var result = await SeriesWatchService.SetAutoWatchAsync(seriesName, seasonName, watched);
+            if (result != null && watched)
+            {
+                Messenger.AddInformation($"Auto-watch enabled for '{seriesName} - {seasonName}'. {result.FilesMarkedWanted} files marked as wanted.");
+            }
+            else if (!watched)
+            {
+                Messenger.AddInformation($"Auto-watch disabled for '{seriesName} - {seasonName}'.");
+            }
+
+            await LoadSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error toggling watch: {ex.Message}");
+        }
+    }
+
+    private async Task BulkMarkWanted(string seriesName, string? seasonName, bool wanted)
+    {
+        try
+        {
+            var count = await SeriesWatchService.BulkSetWantedAsync(seriesName, seasonName, wanted);
+            var scope = seasonName != null ? $"{seriesName} - {seasonName}" : seriesName;
+            Messenger.AddInformation($"{count} files in '{scope}' marked as {(wanted ? "wanted" : "unwanted")}.");
+
+            await LoadSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error bulk updating: {ex.Message}");
+        }
+    }
+}

@@ -14,9 +14,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Core\Api\Api.csproj" />
-      <ProjectReference Include="..\Frontend\WebApp\WebApp.csproj" />
-      <ProjectReference Include="..\Frontend\Worker\Worker.csproj" />
+        <ProjectReference Include="..\Core\Api\Api.csproj" />
+        <ProjectReference Include="..\Frontend\WebApp\WebApp.csproj" />
+        <ProjectReference Include="..\Frontend\HavitWebApp\HavitWebApp.csproj" />
+        <ProjectReference Include="..\Frontend\Worker\Worker.csproj" />
     </ItemGroup>
-
 </Project>

@@ -5,7 +5,9 @@
     <Project Path="Core/Infrastructure/Infrastructure.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/Frontend/">
+    <Project Path="Frontend/Shared/Shared.csproj" Type="Classic C#" />
     <Project Path="Frontend/WebApp/WebApp.csproj" Type="Classic C#" />
+    <Project Path="Frontend/HavitWebApp/HavitWebApp.csproj" Type="Classic C#" />
     <Project Path="Frontend/Worker/Worker.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/Solution Items/">

@@ -24,6 +24,7 @@
       <ProjectReference Include="..\..\ServiceDefaults\ServiceDefaults.csproj" />
       <ProjectReference Include="..\..\Core\Application\Application.csproj" />
       <ProjectReference Include="..\..\Core\Api\Api.csproj" />
+      <ProjectReference Include="..\Shared\Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>
