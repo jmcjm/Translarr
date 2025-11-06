@@ -7,6 +7,6 @@ public class ScanResultDto
     public int RemovedFiles { get; set; }
     public int ErrorFiles { get; set; }
     public TimeSpan Duration { get; set; }
-    public List<string> Errors { get; set; } = new();
+    public List<string> Errors { get; set; } = [];
 }
 

@@ -70,28 +70,13 @@
                         <HxButton Color="ThemeColor.Primary"
                                   OnClick="ScanLibrary"
                                   Enabled="!_isScanning">
-                            @if (_isScanning)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-search me-2"></i>
-                            }
                             Scan Library
                         </HxButton>
 
                         <HxButton Color="ThemeColor.Secondary"
                                   OnClick="StartTranslation"
                                   Enabled="!_isTranslating && _stats.WantedFiles > 0">
-                            @if (_isTranslating)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                            }
-                            else
-                            {
-                                <i class="bi bi-translate me-2"></i>
-                            }
+                            <i class="bi bi-translate me-2"></i>
                             Start Translation
                         </HxButton>
                     </div>
@@ -101,7 +86,7 @@
     </div>
 
     <!-- Translation Progress Card -->
-    @if (_translationStatus != null && _translationStatus.IsRunning)
+    @if (_translationStatus is { IsRunning: true })
     {
         <div class="row g-3 mb-4">
             <div class="col-12">
@@ -136,8 +121,8 @@
     private LibraryStats? _stats;
     private TranslationStatus? _translationStatus;
     private bool _isLoading = true;
-    private bool _isScanning = false;
-    private bool _isTranslating = false;
+    private bool _isScanning;
+    private bool _isTranslating;
     private System.Threading.Timer? _statusTimer;
 
     protected override async Task OnInitializedAsync()

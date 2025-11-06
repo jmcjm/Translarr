@@ -50,9 +50,9 @@
 </MudMenu>
 
 @code {
-    private List<ThemeOption> _themes = new();
+    private List<ThemeOption> _themes = [];
     private string _currentTheme = "default";
-    private bool _isDarkMode = false;
+    private bool _isDarkMode;
 
     protected override void OnInitialized()
     {

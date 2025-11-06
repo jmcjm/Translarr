@@ -147,8 +147,8 @@
     private LibraryStats? _stats;
     private TranslationStatus? _translationStatus;
     private bool _isLoading = true;
-    private bool _isScanning = false;
-    private bool _isTranslating = false;
+    private bool _isScanning;
+    private bool _isTranslating;
     private System.Threading.Timer? _statusTimer;
 
     protected override async Task OnInitializedAsync()
