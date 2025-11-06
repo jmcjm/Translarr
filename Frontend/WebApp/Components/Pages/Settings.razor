@@ -178,9 +178,9 @@
 @code {
     private List<AppSettingDto>? _settings;
     private bool _isLoading = true;
-    private bool _isTesting = false;
-    private bool _isSaving = false;
-    private bool _hasUnsavedChanges = false;
+    private bool _isTesting;
+    private bool _isSaving;
+    private bool _hasUnsavedChanges;
 
     // Local variables for form fields
     private string _geminiApiKey = "";
@@ -190,8 +190,8 @@
     private double _temperature = 0.55;
     private int _rateLimitPerMinute = 5;
     private int _rateLimitPerDay = 100;
-    private bool _autoLibraryScan = false;
-    private bool _autoTranslate = false;
+    private bool _autoLibraryScan;
+    private bool _autoTranslate;
 
     protected override async Task OnInitializedAsync()
     {

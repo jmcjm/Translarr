@@ -168,8 +168,8 @@ else if (!_isLoading)
 
 @code {
     private List<SeriesGroupDto>? _seriesGroups;
-    private List<SeriesGroupDto> _filteredSeriesGroups = new();
-    private HashSet<string> _expandedSeries = new();
+    private List<SeriesGroupDto> _filteredSeriesGroups = [];
+    private HashSet<string> _expandedSeries = [];
     private bool _isLoading = true;
     private string _searchText = string.Empty;
 
@@ -183,7 +183,7 @@ else if (!_isLoading)
         try
         {
             _isLoading = true;
-            _seriesGroups = await SeriesWatchService.GetSeriesGroupsAsync() ?? new();
+            _seriesGroups = await SeriesWatchService.GetSeriesGroupsAsync() ?? [];
             FilterSeriesGroups();
         }
         catch (Exception ex)
@@ -200,7 +200,7 @@ else if (!_isLoading)
     {
         if (_seriesGroups == null)
         {
-            _filteredSeriesGroups = new();
+            _filteredSeriesGroups = [];
             return;
         }
 

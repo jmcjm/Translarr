@@ -67,11 +67,11 @@ public class ThemeService
 
     public List<ThemeOption> GetAvailableThemes()
     {
-        return new List<ThemeOption>
-        {
+        return
+        [
             new ThemeOption { Name = "default", DisplayName = "Default", SupportsDark = true },
             new ThemeOption { Name = "dracula", DisplayName = "Dracula", SupportsDark = false }
-        };
+        ];
     }
 
     private MudTheme GetThemeByName(string themeName)

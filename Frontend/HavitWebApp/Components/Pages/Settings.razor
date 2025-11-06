@@ -65,14 +65,6 @@
                     <HxButton Color="ThemeColor.Primary"
                               OnClick="TestApiConnection"
                               Enabled="!_isTesting">
-                        @if (_isTesting)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        }
-                        else
-                        {
-                            <i class="bi bi-plug me-2"></i>
-                        }
                         Test API Connection
                     </HxButton>
                 </BodyTemplate>
@@ -126,43 +118,43 @@
         </div>
 
         <!-- Automation (Full Width) -->
-        <div class="col-12">
-            <HxCard>
-                <HeaderTemplate>
-                    <h5 class="mb-0">Automation (Worker Service Required)</h5>
-                </HeaderTemplate>
-                <BodyTemplate>
-                    <div class="d-flex gap-4 flex-wrap">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   role="switch"
-                                   id="autoLibraryScan"
-                                   @bind="_autoLibraryScan"
-                                   disabled />
-                            <label class="form-check-label" for="autoLibraryScan">
-                                Auto Library Scan
-                            </label>
-                        </div>
-
-                        <div class="form-check form-switch">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   role="switch"
-                                   id="autoTranslate"
-                                   @bind="_autoTranslate"
-                                   disabled />
-                            <label class="form-check-label" for="autoTranslate">
-                                Auto Translate
-                            </label>
-                        </div>
-                    </div>
-                    <div class="form-text mt-2">
-                        Note: Automation features require the Worker Service to be running (not yet available)
-                    </div>
-                </BodyTemplate>
-            </HxCard>
-        </div>
+        @* <div class="col-12"> *@
+        @*     <HxCard> *@
+        @*         <HeaderTemplate> *@
+        @*             <h5 class="mb-0">Automation (Worker Service Required)</h5> *@
+        @*         </HeaderTemplate> *@
+        @*         <BodyTemplate> *@
+        @*             <div class="d-flex gap-4 flex-wrap"> *@
+        @*                 <div class="form-check form-switch"> *@
+        @*                     <input class="form-check-input" *@
+        @*                            type="checkbox" *@
+        @*                            role="switch" *@
+        @*                            id="autoLibraryScan" *@
+        @*                            @bind="_autoLibraryScan" *@
+        @*                            disabled /> *@
+        @*                     <label class="form-check-label" for="autoLibraryScan"> *@
+        @*                         Auto Library Scan *@
+        @*                     </label> *@
+        @*                 </div> *@
+        @* *@
+        @*                 <div class="form-check form-switch"> *@
+        @*                     <input class="form-check-input" *@
+        @*                            type="checkbox" *@
+        @*                            role="switch" *@
+        @*                            id="autoTranslate" *@
+        @*                            @bind="_autoTranslate" *@
+        @*                            disabled /> *@
+        @*                     <label class="form-check-label" for="autoTranslate"> *@
+        @*                         Auto Translate *@
+        @*                     </label> *@
+        @*                 </div> *@
+        @*             </div> *@
+        @*             <div class="form-text mt-2"> *@
+        @*                 Note: Automation features require the Worker Service to be running (not yet available) *@
+        @*             </div> *@
+        @*         </BodyTemplate> *@
+        @*     </HxCard> *@
+        @* </div> *@
 
         <!-- Save Button -->
         <div class="col-12">
@@ -173,7 +165,6 @@
                           Enabled="!_isSaving">
                     @if (_isSaving)
                     {
-                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                         <text>Saving...</text>
                     }
                     else
@@ -190,8 +181,8 @@
 @code {
     private List<AppSettingDto>? _settings;
     private bool _isLoading = true;
-    private bool _isTesting = false;
-    private bool _isSaving = false;
+    private bool _isTesting;
+    private bool _isSaving;
 
     // Local variables for form fields
     private string _geminiApiKey = "";
@@ -201,8 +192,8 @@
     private double _temperature = 0.55;
     private int _rateLimitPerMinute = 5;
     private int _rateLimitPerDay = 100;
-    private bool _autoLibraryScan = false;
-    private bool _autoTranslate = false;
+    private bool _autoLibraryScan;
+    private bool _autoTranslate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -253,48 +244,6 @@
     private string GetSettingDescription(string key)
     {
         return _settings?.FirstOrDefault(s => s.Key == key)?.Description ?? "";
-    }
-
-    private async Task SaveSetting(string key, string value)
-    {
-        try
-        {
-            var success = await SettingsService.UpdateSettingAsync(key, value);
-
-            if (success)
-            {
-                Messenger.AddInformation($"{key} updated successfully");
-            }
-            else
-            {
-                Messenger.AddError($"Failed to update {key}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Messenger.AddError($"Error updating {key}: {ex.Message}");
-        }
-    }
-
-    private async Task SaveRateLimitSetting(string key, int value)
-    {
-        try
-        {
-            var success = await SettingsService.UpdateSettingAsync(key, value.ToString());
-
-            if (success)
-            {
-                Messenger.AddInformation($"{key} updated successfully");
-            }
-            else
-            {
-                Messenger.AddError($"Failed to update {key}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Messenger.AddError($"Error updating {key}: {ex.Message}");
-        }
     }
 
     private async Task SaveAllSettings()

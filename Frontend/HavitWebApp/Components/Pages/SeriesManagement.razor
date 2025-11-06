@@ -172,8 +172,8 @@ else if (!_isLoading)
 
 @code {
     private List<SeriesGroupDto>? _seriesGroups;
-    private List<SeriesGroupDto> _filteredSeriesGroups = new();
-    private HashSet<string> _expandedSeries = new();
+    private List<SeriesGroupDto> _filteredSeriesGroups = [];
+    private readonly HashSet<string> _expandedSeries = [];
     private bool _isLoading = true;
     private string _searchText = string.Empty;
 
@@ -187,7 +187,7 @@ else if (!_isLoading)
         try
         {
             _isLoading = true;
-            _seriesGroups = await SeriesWatchService.GetSeriesGroupsAsync() ?? new();
+            _seriesGroups = await SeriesWatchService.GetSeriesGroupsAsync() ?? [];
             FilterSeriesGroups();
         }
         catch (Exception ex)
@@ -204,7 +204,7 @@ else if (!_isLoading)
     {
         if (_seriesGroups == null)
         {
-            _filteredSeriesGroups = new();
+            _filteredSeriesGroups = [];
             return;
         }
 
@@ -228,10 +228,8 @@ else if (!_isLoading)
 
     private void ToggleSeriesExpanded(string seriesName)
     {
-        if (_expandedSeries.Contains(seriesName))
+        if (!_expandedSeries.Add(seriesName))
             _expandedSeries.Remove(seriesName);
-        else
-            _expandedSeries.Add(seriesName);
     }
 
     private async Task ToggleSeriesWatch(string seriesName, bool watched)
