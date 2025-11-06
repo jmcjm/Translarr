@@ -1,0 +1,69 @@
+@inherits LayoutComponentBase
+@inject ThemeService ThemeService
+
+<div class="d-flex flex-column vh-100">
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container-fluid">
+            <button class="btn btn-outline-light me-3 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-translate me-2"></i>
+                Translarr
+            </a>
+            <div class="ms-auto">
+                <ThemeSwitcher />
+            </div>
+        </div>
+    </nav>
+
+    <div class="d-flex flex-grow-1 overflow-hidden">
+        <!-- Sidebar - Desktop (always visible on lg+) -->
+        <aside class="d-none d-lg-flex flex-column border-end" style="width: 250px; background-color: var(--bs-body-bg);">
+            <div class="p-3 border-bottom">
+                <h5 class="mb-0">
+                    <i class="bi bi-translate me-2"></i>
+                    Navigation
+                </h5>
+            </div>
+            <div class="flex-grow-1 overflow-auto">
+                <NavMenu />
+            </div>
+        </aside>
+
+        <!-- Sidebar - Mobile (offcanvas) -->
+        <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel" data-bs-theme="@(ThemeService.IsDarkMode ? "dark" : "light")">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" id="sidebarLabel">
+                    <i class="bi bi-translate me-2"></i>
+                    Translarr
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-0">
+                <NavMenu />
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-grow-1 overflow-auto p-4">
+            @Body
+        </main>
+    </div>
+</div>
+
+<HxMessenger />
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        ThemeService.OnThemeChanged += StateHasChanged;
+        await ThemeService.InitializeAsync();
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= StateHasChanged;
+    }
+}

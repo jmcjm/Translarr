@@ -1,0 +1,245 @@
+@page "/"
+@inject StatsApiService StatsService
+@inject LibraryApiService LibraryService
+@inject TranslationApiService TranslationService
+@inject IHxMessengerService Messenger
+
+<PageTitle>Dashboard - Translarr</PageTitle>
+
+<h1 class="mb-4">Dashboard</h1>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+
+@if (_stats != null)
+{
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-md-3">
+            <HxCard>
+                <BodyTemplate>
+                    <h2 class="display-6">@_stats.TotalFiles</h2>
+                    <p class="text-muted mb-0">Total Files</p>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+            <HxCard CssClass="border-success">
+                <BodyTemplate>
+                    <h2 class="display-6 text-success">@_stats.ProcessedFiles</h2>
+                    <p class="text-muted mb-0">Processed</p>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+            <HxCard CssClass="border-warning">
+                <BodyTemplate>
+                    <h2 class="display-6 text-warning">@_stats.WantedFiles</h2>
+                    <p class="text-muted mb-0">Waiting to Process</p>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-3">
+            <HxCard CssClass="border-danger">
+                <BodyTemplate>
+                    <h2 class="display-6 text-danger">@_stats.ErrorFiles</h2>
+                    <p class="text-muted mb-0">Errors</p>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+    </div>
+
+    <!-- Actions Card -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <HxCard>
+                <HeaderTemplate>
+                    <h5 class="mb-0">Actions</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <HxButton Color="ThemeColor.Primary"
+                                  OnClick="ScanLibrary"
+                                  Enabled="!_isScanning">
+                            @if (_isScanning)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-search me-2"></i>
+                            }
+                            Scan Library
+                        </HxButton>
+
+                        <HxButton Color="ThemeColor.Secondary"
+                                  OnClick="StartTranslation"
+                                  Enabled="!_isTranslating && _stats.WantedFiles > 0">
+                            @if (_isTranslating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-translate me-2"></i>
+                            }
+                            Start Translation
+                        </HxButton>
+                    </div>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+    </div>
+
+    <!-- Translation Progress Card -->
+    @if (_translationStatus != null && _translationStatus.IsRunning)
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <HxCard CssClass="border-info">
+                    <HeaderTemplate>
+                        <h5 class="mb-0">Translation Progress</h5>
+                    </HeaderTemplate>
+                    <BodyTemplate>
+                        <p class="mb-2">@_translationStatus.Progress</p>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar"
+                                 style="width: 100%"></div>
+                        </div>
+                    </BodyTemplate>
+                </HxCard>
+            </div>
+        </div>
+    }
+
+    <!-- Last Scanned Alert -->
+    @if (_stats.LastScanned.HasValue)
+    {
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            Last scan: @_stats.LastScanned.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+        </div>
+    }
+}
+
+@code {
+    private LibraryStats? _stats;
+    private TranslationStatus? _translationStatus;
+    private bool _isLoading = true;
+    private bool _isScanning = false;
+    private bool _isTranslating = false;
+    private System.Threading.Timer? _statusTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+        await CheckTranslationStatus();
+
+        // Start polling for translation status
+        _statusTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () => await CheckTranslationStatus());
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            _isLoading = true;
+            _stats = await StatsService.GetLibraryStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error loading stats: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ScanLibrary()
+    {
+        try
+        {
+            _isScanning = true;
+            var result = await LibraryService.ScanLibraryAsync();
+
+            if (result != null)
+            {
+                Messenger.AddInformation($"Scan completed: {result.NewFiles} new, {result.UpdatedFiles} updated, {result.RemovedFiles} removed");
+                await LoadStats();
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error scanning library: {ex.Message}");
+        }
+        finally
+        {
+            _isScanning = false;
+        }
+    }
+
+    private async Task StartTranslation()
+    {
+        try
+        {
+            _isTranslating = true;
+            var success = await TranslationService.StartTranslationAsync(100);
+
+            if (success)
+            {
+                Messenger.AddInformation("Translation started");
+            }
+            else
+            {
+                Messenger.AddError("Failed to start translation");
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error starting translation: {ex.Message}");
+        }
+        finally
+        {
+            _isTranslating = false;
+        }
+    }
+
+    private async Task CheckTranslationStatus()
+    {
+        try
+        {
+            _translationStatus = await TranslationService.GetTranslationStatusAsync();
+
+            if (_translationStatus?.IsRunning == false && _translationStatus.Result != null)
+            {
+                // Translation just finished
+                await LoadStats();
+            }
+
+            StateHasChanged();
+        }
+        catch
+        {
+            // Ignore errors during polling
+        }
+    }
+
+    public void Dispose()
+    {
+        _statusTimer?.Dispose();
+    }
+}

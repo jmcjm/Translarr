@@ -1,0 +1,12 @@
+@inject ThemeService ThemeService
+
+<button class="btn btn-outline-light" @onclick="ToggleTheme" title="@(ThemeService.IsDarkMode ? "Switch to light mode" : "Switch to dark mode")">
+    <i class="bi @(ThemeService.IsDarkMode ? "bi-sun" : "bi-moon-stars")"></i>
+</button>
+
+@code {
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleDarkModeAsync();
+    }
+}
