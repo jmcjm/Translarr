@@ -153,15 +153,15 @@
 }
 
 @code {
+    private const int PageSize = 50;
     private PagedResult<SubtitleEntryDto>? _entries;
     private bool _isLoading = true;
     private int _currentPage = 1;
-    private int _pageSize = 50;
     private string? _searchText;
     private bool? _filterProcessed;
     private bool? _filterWanted;
     private bool? _filterAlreadyHas;
-    private System.Threading.Timer? _debounceTimer;
+    private Timer? _debounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
@@ -175,7 +175,7 @@
             _isLoading = true;
             _entries = await LibraryService.GetEntriesAsync(
                 page: _currentPage,
-                pageSize: _pageSize,
+                pageSize: PageSize,
                 isProcessed: _filterProcessed,
                 isWanted: _filterWanted,
                 alreadyHas: _filterAlreadyHas,
@@ -200,14 +200,11 @@
             Snackbar.Add("Updated successfully", Severity.Success);
             
             // Update local state instead of full reload
-            if (_entries?.Items != null)
+            var entry = _entries?.Items?.FirstOrDefault(e => e.Id == id);
+            if (entry != null)
             {
-                var entry = _entries.Items.FirstOrDefault(e => e.Id == id);
-                if (entry != null)
-                {
-                    entry.IsWanted = isWanted;
-                    await InvokeAsync(StateHasChanged); // Force UI refresh
-                }
+                entry.IsWanted = isWanted;
+                await InvokeAsync(StateHasChanged); // Force UI refresh
             }
         }
         catch (Exception ex)
@@ -226,7 +223,7 @@
     private void OnSearchKeyUp(KeyboardEventArgs args)
     {
         _debounceTimer?.Dispose();
-        _debounceTimer = new System.Threading.Timer(_ =>
+        _debounceTimer = new Timer(_ =>
         {
             InvokeAsync(async () =>
             {

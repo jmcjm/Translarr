@@ -123,7 +123,7 @@
     private bool _isLoading = true;
     private bool _isScanning;
     private bool _isTranslating;
-    private System.Threading.Timer? _statusTimer;
+    private Timer? _statusTimer;
 
     protected override async Task OnInitializedAsync()
     {
@@ -131,9 +131,9 @@
         await CheckTranslationStatus();
 
         // Start polling for translation status
-        _statusTimer = new System.Threading.Timer(async _ =>
+        _statusTimer = new Timer(_ =>
         {
-            await InvokeAsync(async () => await CheckTranslationStatus());
+            InvokeAsync(async () => await CheckTranslationStatus()).GetAwaiter().GetResult();
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
     }
 
@@ -209,7 +209,7 @@
         {
             _translationStatus = await TranslationService.GetTranslationStatusAsync();
 
-            if (_translationStatus?.IsRunning == false && _translationStatus.Result != null)
+            if (_translationStatus is { IsRunning: false, Result: not null })
             {
                 // Translation just finished
                 await LoadStats();
