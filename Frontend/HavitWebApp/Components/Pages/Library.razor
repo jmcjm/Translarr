@@ -1,0 +1,272 @@
+@page "/library"
+@inject LibraryApiService LibraryService
+@inject IHxMessengerService Messenger
+
+<PageTitle>Library - Translarr</PageTitle>
+
+<h1 class="mb-4">Library</h1>
+
+<!-- Filters Card -->
+<HxCard CssClass="mb-4">
+    <BodyTemplate>
+        <div class="row g-3">
+            <div class="col-12 col-md-3">
+                <label class="form-label">Search</label>
+                <div class="input-group">
+                    <input type="text"
+                           class="form-control"
+                           placeholder="Search..."
+                           @bind="_searchText"
+                           @bind:event="oninput"
+                           @onkeyup="OnSearchKeyUp" />
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Status</label>
+                <select class="form-select" @bind="_filterProcessed" @bind:after="ApplyFilters">
+                    <option value="">All</option>
+                    <option value="true">Processed</option>
+                    <option value="false">Not Processed</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Wanted</label>
+                <select class="form-select" @bind="_filterWanted" @bind:after="ApplyFilters">
+                    <option value="">All</option>
+                    <option value="true">Wanted</option>
+                    <option value="false">Not Wanted</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label">Already Has</label>
+                <select class="form-select" @bind="_filterAlreadyHas" @bind:after="ApplyFilters">
+                    <option value="">All</option>
+                    <option value="true">Has Subtitles</option>
+                    <option value="false">No Subtitles</option>
+                </select>
+            </div>
+        </div>
+    </BodyTemplate>
+</HxCard>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+
+<!-- Table -->
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Series</th>
+                <th>Season</th>
+                <th>File Name</th>
+                <th>Status</th>
+                <th>Wanted</th>
+                <th>Already Has</th>
+                <th>Last Scanned</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (_entries?.Items != null)
+            {
+                @foreach (var entry in _entries.Items)
+                {
+                    <tr>
+                        <td>@entry.Series</td>
+                        <td>@entry.Season</td>
+                        <td title="@entry.FilePath">@entry.FileName</td>
+                        <td>
+                            @if (entry.IsProcessed)
+                            {
+                                <span class="badge bg-success">Processed</span>
+                            }
+                            else if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                            {
+                                <span class="badge bg-danger" title="@entry.ErrorMessage">Error</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Pending</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       role="switch"
+                                       checked="@entry.IsWanted"
+                                       @onchange="@(async (e) => await UpdateWantedStatus(entry.Id, (bool)e.Value!))" />
+                            </div>
+                        </td>
+                        <td>
+                            @if (entry.AlreadyHad)
+                            {
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                            }
+                            else
+                            {
+                                <i class="bi bi-x-circle-fill text-danger"></i>
+                            }
+                        </td>
+                        <td>@entry.LastScanned.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                            {
+                                <button class="btn btn-sm btn-info"
+                                        @onclick="@(() => ShowErrorDetails(entry.ErrorMessage))"
+                                        title="View error details">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            else if (!_isLoading)
+            {
+                <tr>
+                    <td colspan="8" class="text-center text-muted">No entries found</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+@if (_entries != null && _entries.TotalPages > 1)
+{
+    <nav aria-label="Library pagination">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
+                <button class="page-link" @onclick="@(() => ChangePage(_currentPage - 1))" disabled="@(_currentPage <= 1)">
+                    Previous
+                </button>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Page @_currentPage of @_entries.TotalPages</span>
+            </li>
+            <li class="page-item @(_currentPage >= _entries.TotalPages ? "disabled" : "")">
+                <button class="page-link" @onclick="@(() => ChangePage(_currentPage + 1))" disabled="@(_currentPage >= _entries.TotalPages)">
+                    Next
+                </button>
+            </li>
+        </ul>
+    </nav>
+}
+
+@code {
+    private PagedResult<SubtitleEntryDto>? _entries;
+    private bool _isLoading = true;
+    private int _currentPage = 1;
+    private int _pageSize = 50;
+    private string? _searchText;
+    private string? _filterProcessed;
+    private string? _filterWanted;
+    private string? _filterAlreadyHas;
+    private System.Threading.Timer? _debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        try
+        {
+            _isLoading = true;
+            _entries = await LibraryService.GetEntriesAsync(
+                page: _currentPage,
+                pageSize: _pageSize,
+                isProcessed: ParseBoolFilter(_filterProcessed),
+                isWanted: ParseBoolFilter(_filterWanted),
+                alreadyHas: ParseBoolFilter(_filterAlreadyHas),
+                search: _searchText
+            );
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error loading entries: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private bool? ParseBoolFilter(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return null;
+        return value == "true";
+    }
+
+    private async Task UpdateWantedStatus(int id, bool isWanted)
+    {
+        try
+        {
+            await LibraryService.UpdateWantedStatusAsync(id, isWanted);
+            Messenger.AddInformation("Updated successfully");
+
+            // Update local state instead of full reload
+            if (_entries?.Items != null)
+            {
+                var entry = _entries.Items.FirstOrDefault(e => e.Id == id);
+                if (entry != null)
+                {
+                    entry.IsWanted = isWanted;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error updating status: {ex.Message}");
+            await LoadEntries(); // Reload to revert the UI change
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        _currentPage = page;
+        await LoadEntries();
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs args)
+    {
+        _debounceTimer?.Dispose();
+        _debounceTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                _currentPage = 1;
+                await LoadEntries();
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task ApplyFilters()
+    {
+        _currentPage = 1;
+        await LoadEntries();
+    }
+
+    private void ShowErrorDetails(string errorMessage)
+    {
+        Messenger.AddError(errorMessage);
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

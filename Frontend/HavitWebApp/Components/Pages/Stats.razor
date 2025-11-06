@@ -1,0 +1,293 @@
+@page "/stats"
+@inject StatsApiService StatsService
+@inject IHxMessengerService Messenger
+
+<PageTitle>Statistics - Translarr</PageTitle>
+
+<h1 class="mb-4">Statistics</h1>
+
+<div class="row g-4">
+    <!-- Library Overview -->
+    <div class="col-12 col-md-6">
+        <HxCard>
+            <HeaderTemplate>
+                <h5 class="mb-0">Library Overview</h5>
+            </HeaderTemplate>
+            <BodyTemplate>
+                @if (_libraryStats != null)
+                {
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Files:</span>
+                        <strong>@_libraryStats.TotalFiles</strong>
+                    </div>
+                    <hr />
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-success">Processed:</span>
+                            <strong class="text-success">@_libraryStats.ProcessedFiles</strong>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success"
+                                 role="progressbar"
+                                 style="width: @GetPercentage(_libraryStats.ProcessedFiles, _libraryStats.TotalFiles)%"
+                                 aria-valuenow="@GetPercentage(_libraryStats.ProcessedFiles, _libraryStats.TotalFiles)"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-warning">Waiting to Process:</span>
+                            <strong class="text-warning">@_libraryStats.WantedFiles</strong>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning"
+                                 role="progressbar"
+                                 style="width: @GetPercentage(_libraryStats.WantedFiles, _libraryStats.TotalFiles)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Unprocessed:</span>
+                            <strong>@_libraryStats.UnprocessedFiles</strong>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-secondary"
+                                 role="progressbar"
+                                 style="width: @GetPercentage(_libraryStats.UnprocessedFiles, _libraryStats.TotalFiles)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-info">Already Has Subtitles:</span>
+                            <strong class="text-info">@_libraryStats.AlreadyHasFiles</strong>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info"
+                                 role="progressbar"
+                                 style="width: @GetPercentage(_libraryStats.AlreadyHasFiles, _libraryStats.TotalFiles)%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-danger">Errors:</span>
+                            <strong class="text-danger">@_libraryStats.ErrorFiles</strong>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-danger"
+                                 role="progressbar"
+                                 style="width: @GetPercentage(_libraryStats.ErrorFiles, _libraryStats.TotalFiles)%"></div>
+                        </div>
+                    </div>
+
+                    @if (_libraryStats.LastScanned.HasValue)
+                    {
+                        <hr />
+                        <small class="text-muted">
+                            Last scanned: @_libraryStats.LastScanned.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                        </small>
+                    }
+                }
+                else if (_isLoading)
+                {
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+            </BodyTemplate>
+        </HxCard>
+    </div>
+
+    <!-- API Usage -->
+    <div class="col-12 col-md-6">
+        <HxCard>
+            <HeaderTemplate>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">API Usage</h5>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshApiUsage">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </HeaderTemplate>
+            <BodyTemplate>
+                <div class="mb-3">
+                    <label class="form-label">Time Period</label>
+                    <select class="form-select" @bind="_selectedPeriod" @bind:after="LoadApiUsage">
+                        <option value="7days">Last 7 Days</option>
+                        <option value="30days">Last 30 Days</option>
+                        <option value="90days">Last 90 Days</option>
+                    </select>
+                </div>
+
+                @if (_apiUsage != null && _apiUsage.Any())
+                {
+                    <p class="mb-3"><strong>Total API Calls:</strong> @_apiUsage.Count</p>
+
+                    <p class="text-muted mb-2">Recent Activity:</p>
+
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Model</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var usage in _apiUsage.OrderByDescending(u => u.Date).Take(10))
+                                {
+                                    <tr>
+                                        <td>@usage.Date.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>@usage.Model</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (_apiUsage.Count > 10)
+                    {
+                        <small class="text-muted">
+                            Showing 10 most recent of @_apiUsage.Count total calls
+                        </small>
+                    }
+                }
+                else if (_isLoadingApi)
+                {
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info" role="alert">
+                        No API usage data available for the selected period.
+                    </div>
+                }
+            </BodyTemplate>
+        </HxCard>
+    </div>
+
+    <!-- Processing Summary -->
+    <div class="col-12">
+        <HxCard>
+            <HeaderTemplate>
+                <h5 class="mb-0">Processing Summary</h5>
+            </HeaderTemplate>
+            <BodyTemplate>
+                @if (_libraryStats != null)
+                {
+                    <div class="row g-3 text-center">
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="p-3">
+                                <h2 class="display-6 text-primary">@GetProcessingPercentage()%</h2>
+                                <p class="text-muted mb-0">Processing Completion</p>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="p-3">
+                                <h2 class="display-6 text-success">@_libraryStats.ProcessedFiles</h2>
+                                <p class="text-muted mb-0">Successfully Processed</p>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="p-3">
+                                <h2 class="display-6 text-warning">@_libraryStats.WantedFiles</h2>
+                                <p class="text-muted mb-0">In Queue</p>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="p-3">
+                                <h2 class="display-6 text-danger">@_libraryStats.ErrorFiles</h2>
+                                <p class="text-muted mb-0">Failed</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </BodyTemplate>
+        </HxCard>
+    </div>
+</div>
+
+@code {
+    private LibraryStats? _libraryStats;
+    private List<ApiUsageDto>? _apiUsage;
+    private bool _isLoading = true;
+    private bool _isLoadingApi = true;
+    private string _selectedPeriod = "30days";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+        await LoadApiUsage();
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            _isLoading = true;
+            _libraryStats = await StatsService.GetLibraryStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error loading library stats: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadApiUsage()
+    {
+        try
+        {
+            _isLoadingApi = true;
+
+            var days = _selectedPeriod switch
+            {
+                "7days" => 7,
+                "90days" => 90,
+                _ => 30
+            };
+
+            var from = DateTime.UtcNow.AddDays(-days);
+            _apiUsage = await StatsService.GetApiUsageStatsAsync(from);
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error loading API usage: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingApi = false;
+        }
+    }
+
+    private async Task RefreshApiUsage()
+    {
+        await LoadApiUsage();
+    }
+
+    private double GetPercentage(int value, int total)
+    {
+        if (total == 0) return 0;
+        return (double)value / total * 100;
+    }
+
+    private int GetProcessingPercentage()
+    {
+        if (_libraryStats == null || _libraryStats.TotalFiles == 0) return 0;
+        return (int)((double)_libraryStats.ProcessedFiles / _libraryStats.TotalFiles * 100);
+    }
+}

@@ -1,0 +1,377 @@
+@page "/settings"
+@inject SettingsApiService SettingsService
+@inject IHxMessengerService Messenger
+
+<PageTitle>Settings - Translarr</PageTitle>
+
+<h1 class="mb-4">Settings</h1>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+
+@if (_settings != null)
+{
+    <div class="row g-4">
+        <!-- Left Column -->
+        <div class="col-12 col-md-6">
+            <!-- Gemini API Configuration -->
+            <HxCard CssClass="mb-4">
+                <HeaderTemplate>
+                    <h5 class="mb-0">Gemini API Configuration</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="mb-3">
+                        <label class="form-label">API Key</label>
+                        <input type="password"
+                               class="form-control"
+                               @bind="_geminiApiKey" />
+                        <div class="form-text">@GetSettingDescription("GeminiApiKey")</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Model</label>
+                        <input type="text"
+                               class="form-control"
+                               @bind="_geminiModel" />
+                        <div class="form-text">@GetSettingDescription("GeminiModel")</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Temperature: @_temperature.ToString("F2")</label>
+                        <input type="range"
+                               class="form-range"
+                               min="0"
+                               max="1"
+                               step="0.05"
+                               @bind="_temperature"
+                               @bind:event="oninput" />
+                        <div class="form-text">@GetSettingDescription("Temperature")</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">System Prompt</label>
+                        <textarea class="form-control"
+                                  rows="5"
+                                  @bind="_systemPrompt"></textarea>
+                        <div class="form-text">@GetSettingDescription("SystemPrompt")</div>
+                    </div>
+
+                    <HxButton Color="ThemeColor.Primary"
+                              OnClick="TestApiConnection"
+                              Enabled="!_isTesting">
+                        @if (_isTesting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-plug me-2"></i>
+                        }
+                        Test API Connection
+                    </HxButton>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-12 col-md-6">
+            <!-- Translation Settings -->
+            <HxCard CssClass="mb-4">
+                <HeaderTemplate>
+                    <h5 class="mb-0">Translation Settings</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="mb-3">
+                        <label class="form-label">Preferred Subtitle Language</label>
+                        <input type="text"
+                               class="form-control"
+                               @bind="_preferredSubsLang"
+                               placeholder="e.g., pl, es, fr" />
+                        <div class="form-text">@GetSettingDescription("PreferredSubsLang")</div>
+                    </div>
+                </BodyTemplate>
+            </HxCard>
+
+            <!-- Rate Limiting -->
+            <HxCard CssClass="mb-4">
+                <HeaderTemplate>
+                    <h5 class="mb-0">Rate Limiting</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="mb-3">
+                        <label class="form-label">Requests Per Minute</label>
+                        <input type="number"
+                               class="form-control"
+                               min="1"
+                               @bind="_rateLimitPerMinute" />
+                        <div class="form-text">@GetSettingDescription("RateLimitPerMinute")</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Requests Per Day</label>
+                        <input type="number"
+                               class="form-control"
+                               min="1"
+                               @bind="_rateLimitPerDay" />
+                        <div class="form-text">@GetSettingDescription("RateLimitPerDay")</div>
+                    </div>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+
+        <!-- Automation (Full Width) -->
+        <div class="col-12">
+            <HxCard>
+                <HeaderTemplate>
+                    <h5 class="mb-0">Automation (Worker Service Required)</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="d-flex gap-4 flex-wrap">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="autoLibraryScan"
+                                   @bind="_autoLibraryScan"
+                                   disabled />
+                            <label class="form-check-label" for="autoLibraryScan">
+                                Auto Library Scan
+                            </label>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="autoTranslate"
+                                   @bind="_autoTranslate"
+                                   disabled />
+                            <label class="form-check-label" for="autoTranslate">
+                                Auto Translate
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        Note: Automation features require the Worker Service to be running (not yet available)
+                    </div>
+                </BodyTemplate>
+            </HxCard>
+        </div>
+
+        <!-- Save Button -->
+        <div class="col-12">
+            <div class="d-flex gap-3">
+                <HxButton Color="ThemeColor.Primary"
+                          Size="ButtonSize.Large"
+                          OnClick="SaveAllSettings"
+                          Enabled="!_isSaving">
+                    @if (_isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <text>Saving...</text>
+                    }
+                    else
+                    {
+                        <i class="bi bi-save me-2"></i>
+                        <text>Save Settings</text>
+                    }
+                </HxButton>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AppSettingDto>? _settings;
+    private bool _isLoading = true;
+    private bool _isTesting = false;
+    private bool _isSaving = false;
+
+    // Local variables for form fields
+    private string _geminiApiKey = "";
+    private string _geminiModel = "";
+    private string _systemPrompt = "";
+    private string _preferredSubsLang = "";
+    private double _temperature = 0.55;
+    private int _rateLimitPerMinute = 5;
+    private int _rateLimitPerDay = 100;
+    private bool _autoLibraryScan = false;
+    private bool _autoTranslate = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            _isLoading = true;
+            _settings = await SettingsService.GetAllSettingsAsync();
+
+            // Load values into local variables
+            _geminiApiKey = GetSettingValue("GeminiApiKey");
+            _geminiModel = GetSettingValue("GeminiModel");
+            _systemPrompt = GetSettingValue("SystemPrompt");
+            _preferredSubsLang = GetSettingValue("PreferredSubsLang");
+
+            // Parse numeric values
+            if (double.TryParse(GetSettingValue("Temperature"), out var temp))
+                _temperature = temp;
+
+            if (int.TryParse(GetSettingValue("RateLimitPerMinute"), out var rateMin))
+                _rateLimitPerMinute = rateMin;
+
+            if (int.TryParse(GetSettingValue("RateLimitPerDay"), out var rateDay))
+                _rateLimitPerDay = rateDay;
+
+            _autoLibraryScan = GetSettingValue("AutoLibraryScan") == "true";
+            _autoTranslate = GetSettingValue("AutoTranslate") == "true";
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error loading settings: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetSettingValue(string key)
+    {
+        return _settings?.FirstOrDefault(s => s.Key == key)?.Value ?? "";
+    }
+
+    private string GetSettingDescription(string key)
+    {
+        return _settings?.FirstOrDefault(s => s.Key == key)?.Description ?? "";
+    }
+
+    private async Task SaveSetting(string key, string value)
+    {
+        try
+        {
+            var success = await SettingsService.UpdateSettingAsync(key, value);
+
+            if (success)
+            {
+                Messenger.AddInformation($"{key} updated successfully");
+            }
+            else
+            {
+                Messenger.AddError($"Failed to update {key}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error updating {key}: {ex.Message}");
+        }
+    }
+
+    private async Task SaveRateLimitSetting(string key, int value)
+    {
+        try
+        {
+            var success = await SettingsService.UpdateSettingAsync(key, value.ToString());
+
+            if (success)
+            {
+                Messenger.AddInformation($"{key} updated successfully");
+            }
+            else
+            {
+                Messenger.AddError($"Failed to update {key}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error updating {key}: {ex.Message}");
+        }
+    }
+
+    private async Task SaveAllSettings()
+    {
+        try
+        {
+            _isSaving = true;
+            var errorCount = 0;
+
+            // Save Gemini API settings
+            if (!await TrySaveSetting("GeminiApiKey", _geminiApiKey)) errorCount++;
+            if (!await TrySaveSetting("GeminiModel", _geminiModel)) errorCount++;
+            if (!await TrySaveSetting("Temperature", _temperature.ToString("F2"))) errorCount++;
+            if (!await TrySaveSetting("SystemPrompt", _systemPrompt)) errorCount++;
+
+            // Save Translation settings
+            if (!await TrySaveSetting("PreferredSubsLang", _preferredSubsLang)) errorCount++;
+
+            // Save Rate Limiting settings
+            if (!await TrySaveSetting("RateLimitPerMinute", _rateLimitPerMinute.ToString())) errorCount++;
+            if (!await TrySaveSetting("RateLimitPerDay", _rateLimitPerDay.ToString())) errorCount++;
+
+            if (errorCount == 0)
+            {
+                Messenger.AddInformation("All settings saved successfully");
+            }
+            else
+            {
+                Messenger.AddWarning($"Settings saved with {errorCount} error(s)");
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error saving settings: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task<bool> TrySaveSetting(string key, string value)
+    {
+        try
+        {
+            return await SettingsService.UpdateSettingAsync(key, value);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task TestApiConnection()
+    {
+        try
+        {
+            _isTesting = true;
+
+            var result = await SettingsService.TestApiConnectionAsync();
+
+            if (result?.Success == true)
+            {
+                Messenger.AddInformation("API connection successful!");
+            }
+            else
+            {
+                Messenger.AddError($"API connection failed: {result?.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error testing API: {ex.Message}");
+        }
+        finally
+        {
+            _isTesting = false;
+        }
+    }
+}

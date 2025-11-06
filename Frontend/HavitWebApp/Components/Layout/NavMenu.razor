@@ -1,0 +1,43 @@
+@inject NavigationManager NavigationManager
+
+<nav class="nav flex-column">
+    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+        <i class="bi bi-speedometer2 me-2"></i>
+        Dashboard
+    </NavLink>
+    <NavLink class="nav-link" href="/library" Match="NavLinkMatch.Prefix">
+        <i class="bi bi-collection-play me-2"></i>
+        Library
+    </NavLink>
+    <NavLink class="nav-link" href="/settings" Match="NavLinkMatch.Prefix">
+        <i class="bi bi-gear me-2"></i>
+        Settings
+    </NavLink>
+    <NavLink class="nav-link" href="/stats" Match="NavLinkMatch.Prefix">
+        <i class="bi bi-bar-chart me-2"></i>
+        Statistics
+    </NavLink>
+</nav>
+
+<style>
+    .nav-link {
+        color: var(--bs-body-color);
+        padding: 0.75rem 1rem;
+        border-radius: 0;
+        transition: background-color 0.2s ease;
+    }
+
+    .nav-link:hover {
+        background-color: var(--bs-primary-bg-subtle);
+    }
+
+    .nav-link.active {
+        background-color: var(--bs-primary);
+        color: white;
+        font-weight: 500;
+    }
+
+    .nav-link i {
+        font-size: 1.1rem;
+    }
+</style>
