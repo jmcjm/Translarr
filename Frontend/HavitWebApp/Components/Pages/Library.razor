@@ -1,6 +1,7 @@
 @page "/library"
 @inject LibraryApiService LibraryService
 @inject IHxMessengerService Messenger
+@implements IDisposable
 
 <PageTitle>Library - Translarr</PageTitle>
 
@@ -52,155 +53,161 @@
     </BodyTemplate>
 </HxCard>
 
-@if (_isLoading)
-{
-    <div class="d-flex justify-content-center my-4">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-}
+<!-- HxGrid with Card Wrapper -->
+<HxCard CssClass="shadow-sm">
+    <BodyTemplate>
+        <HxGrid TItem="SubtitleEntryDto"
+                DataProvider="GetGridData"
+                @ref="_gridRef"
+                PageSize="_pageSize"
+                Striped="true"
+                Hover="true"
+                Responsive="true"
+                TableCssClass="mb-0">
+            <Columns>
+                <HxGridColumn HeaderText="Series"
+                              ItemTextSelector="@(e => e.Series)"
+                              SortString="Series" />
 
-<!-- Table -->
-<div class="table-responsive">
-    <table class="table table-striped table-hover">
-        <thead>
-            <tr>
-                <th>Series</th>
-                <th>Season</th>
-                <th>File Name</th>
-                <th>Status</th>
-                <th>Wanted</th>
-                <th>Already Has</th>
-                <th>Last Scanned</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (_entries?.Items != null)
-            {
-                @foreach (var entry in _entries.Items)
-                {
-                    <tr>
-                        <td>@entry.Series</td>
-                        <td>@entry.Season</td>
-                        <td title="@entry.FilePath">@entry.FileName</td>
-                        <td>
-                            @if (entry.IsProcessed)
-                            {
-                                <span class="badge bg-success">Processed</span>
-                            }
-                            else if (!string.IsNullOrEmpty(entry.ErrorMessage))
-                            {
-                                <span class="badge bg-danger" title="@entry.ErrorMessage">Error</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Pending</span>
-                            }
-                        </td>
-                        <td>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       role="switch"
-                                       checked="@entry.IsWanted"
-                                       @onchange="@(async (e) => await UpdateWantedStatus(entry.Id, (bool)e.Value!))" />
-                            </div>
-                        </td>
-                        <td>
-                            @if (entry.AlreadyHad)
-                            {
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                            }
-                            else
-                            {
-                                <i class="bi bi-x-circle-fill text-danger"></i>
-                            }
-                        </td>
-                        <td>@entry.LastScanned.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                        <td>
-                            @if (!string.IsNullOrEmpty(entry.ErrorMessage))
-                            {
-                                <button class="btn btn-sm btn-info"
-                                        @onclick="@(() => ShowErrorDetails(entry.ErrorMessage))"
-                                        title="View error details">
-                                    <i class="bi bi-info-circle"></i>
-                                </button>
-                            }
-                        </td>
-                    </tr>
-                }
-            }
-            else if (!_isLoading)
-            {
-                <tr>
-                    <td colspan="8" class="text-center text-muted">No entries found</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                <HxGridColumn HeaderText="Season"
+                              ItemTextSelector="@(e => e.Season)"
+                              SortString="Season" />
+
+                <HxGridColumn HeaderText="File Name">
+                    <ItemTemplate Context="entry">
+                        <span title="@entry.FilePath">@entry.FileName</span>
+                    </ItemTemplate>
+                </HxGridColumn>
+
+                <HxGridColumn HeaderText="Status">
+                    <ItemTemplate Context="entry">
+                        @if (entry.IsProcessed)
+                        {
+                            <HxBadge Color="ThemeColor.Success">Processed</HxBadge>
+                        }
+                        else if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                        {
+                            <HxBadge Color="ThemeColor.Danger" title="@entry.ErrorMessage">Error</HxBadge>
+                        }
+                        else
+                        {
+                            <HxBadge Color="ThemeColor.Secondary">Pending</HxBadge>
+                        }
+                    </ItemTemplate>
+                </HxGridColumn>
+
+                <HxGridColumn HeaderText="Wanted">
+                    <ItemTemplate Context="entry">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   checked="@entry.IsWanted"
+                                   @onchange="@(async (e) => await UpdateWantedStatus(entry.Id, (bool)e.Value!))" />
+                        </div>
+                    </ItemTemplate>
+                </HxGridColumn>
+
+                <HxGridColumn HeaderText="Already Has">
+                    <ItemTemplate Context="entry">
+                        @if (entry.AlreadyHad)
+                        {
+                            <HxIcon Icon="BootstrapIcon.CheckCircleFill" CssClass="text-success" />
+                        }
+                        else
+                        {
+                            <HxIcon Icon="BootstrapIcon.XCircleFill" CssClass="text-danger" />
+                        }
+                    </ItemTemplate>
+                </HxGridColumn>
+
+                <HxGridColumn HeaderText="Last Scanned"
+                              ItemTextSelector="@(e => e.LastScanned.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))"
+                              SortString="LastScanned" />
+
+                <HxGridColumn HeaderText="Actions">
+                    <ItemTemplate Context="entry">
+                        @if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                        {
+                            <HxButton Color="ThemeColor.Info"
+                                      Size="ButtonSize.Small"
+                                      OnClick="@(() => ShowErrorDetails(entry.ErrorMessage))"
+                                      title="View error details">
+                                <HxIcon Icon="BootstrapIcon.InfoCircle" />
+                            </HxButton>
+                        }
+                    </ItemTemplate>
+                </HxGridColumn>
+            </Columns>
+
+            <EmptyDataTemplate>
+                <div class="text-center text-muted p-4">No entries found</div>
+            </EmptyDataTemplate>
+
+            <LoadingDataTemplate>
+                <div class="d-flex justify-content-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </LoadingDataTemplate>
+        </HxGrid>
+    </BodyTemplate>
+</HxCard>
+
+<!-- Page Size Selector -->
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div>
+        <label class="form-label me-2">Items per page:</label>
+        <select class="form-select d-inline-block w-auto" @bind="_pageSize" @bind:after="OnPageSizeChanged">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
 </div>
 
-<!-- Pagination -->
-@if (_entries != null && _entries.TotalPages > 1)
-{
-    <nav aria-label="Library pagination">
-        <ul class="pagination justify-content-center">
-            <li class="page-item @(_currentPage <= 1 ? "disabled" : "")">
-                <button class="page-link" @onclick="@(() => ChangePage(_currentPage - 1))" disabled="@(_currentPage <= 1)">
-                    Previous
-                </button>
-            </li>
-            <li class="page-item disabled">
-                <span class="page-link">Page @_currentPage of @_entries.TotalPages</span>
-            </li>
-            <li class="page-item @(_currentPage >= _entries.TotalPages ? "disabled" : "")">
-                <button class="page-link" @onclick="@(() => ChangePage(_currentPage + 1))" disabled="@(_currentPage >= _entries.TotalPages)">
-                    Next
-                </button>
-            </li>
-        </ul>
-    </nav>
-}
-
 @code {
-    private PagedResult<SubtitleEntryDto>? _entries;
-    private bool _isLoading = true;
-    private int _currentPage = 1;
+    private HxGrid<SubtitleEntryDto> _gridRef = null!;
     private int _pageSize = 50;
     private string? _searchText;
     private string? _filterProcessed;
     private string? _filterWanted;
     private string? _filterAlreadyHas;
-    private System.Threading.Timer? _debounceTimer;
+    private Timer? _debounceTimer;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadEntries();
-    }
-
-    private async Task LoadEntries()
+    private async Task<GridDataProviderResult<SubtitleEntryDto>> GetGridData(
+        GridDataProviderRequest<SubtitleEntryDto> request)
     {
         try
         {
-            _isLoading = true;
-            _entries = await LibraryService.GetEntriesAsync(
-                page: _currentPage,
-                pageSize: _pageSize,
+            // Calculate page from StartIndex and Count (as per Havit docs examples)
+            var page = request.StartIndex / request.Count + 1;
+
+            var result = await LibraryService.GetEntriesAsync(
+                page: page!.Value,
+                pageSize: request.Count!.Value,
                 isProcessed: ParseBoolFilter(_filterProcessed),
                 isWanted: ParseBoolFilter(_filterWanted),
                 alreadyHas: ParseBoolFilter(_filterAlreadyHas),
                 search: _searchText
             );
+
+            return new GridDataProviderResult<SubtitleEntryDto>
+            {
+                Data = result?.Items ?? [],
+                TotalCount = result?.TotalCount ?? 0
+            };
         }
         catch (Exception ex)
         {
             Messenger.AddError($"Error loading entries: {ex.Message}");
-        }
-        finally
-        {
-            _isLoading = false;
+            return new GridDataProviderResult<SubtitleEntryDto>
+            {
+                Data = [],
+                TotalCount = 0
+            };
         }
     }
 
@@ -210,54 +217,45 @@
         return value == "true";
     }
 
+    private async Task OnPageSizeChanged()
+    {
+        await _gridRef.RefreshDataAsync();
+    }
+
     private async Task UpdateWantedStatus(int id, bool isWanted)
     {
         try
         {
             await LibraryService.UpdateWantedStatusAsync(id, isWanted);
             Messenger.AddInformation("Updated successfully");
-
-            // Update local state instead of full reload
-            if (_entries?.Items != null)
-            {
-                var entry = _entries.Items.FirstOrDefault(e => e.Id == id);
-                if (entry != null)
-                {
-                    entry.IsWanted = isWanted;
-                    await InvokeAsync(StateHasChanged);
-                }
-            }
+            await _gridRef.RefreshDataAsync();
         }
         catch (Exception ex)
         {
             Messenger.AddError($"Error updating status: {ex.Message}");
-            await LoadEntries(); // Reload to revert the UI change
         }
-    }
-
-    private async Task ChangePage(int page)
-    {
-        _currentPage = page;
-        await LoadEntries();
     }
 
     private void OnSearchKeyUp(KeyboardEventArgs args)
     {
-        _debounceTimer?.Dispose();
-        _debounceTimer = new System.Threading.Timer(_ =>
+        // Safely dispose old timer
+        var oldTimer = _debounceTimer;
+        _debounceTimer = null;
+        oldTimer?.Dispose();
+
+        // Create new timer
+        _debounceTimer = new Timer(_ =>
         {
             InvokeAsync(async () =>
             {
-                _currentPage = 1;
-                await LoadEntries();
+                await _gridRef.RefreshDataAsync();
             });
         }, null, 500, Timeout.Infinite);
     }
 
     private async Task ApplyFilters()
     {
-        _currentPage = 1;
-        await LoadEntries();
+        await _gridRef.RefreshDataAsync();
     }
 
     private void ShowErrorDetails(string errorMessage)
@@ -267,6 +265,8 @@
 
     public void Dispose()
     {
-        _debounceTimer?.Dispose();
+        var timer = _debounceTimer;
+        _debounceTimer = null;
+        timer?.Dispose();
     }
 }
