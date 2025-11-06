@@ -1,12 +1,20 @@
 @inject ThemeService ThemeService
 
-<button class="btn btn-outline-light" @onclick="ToggleTheme" title="@(ThemeService.IsDarkMode ? "Switch to light mode" : "Switch to dark mode")">
-    <i class="bi @(ThemeService.IsDarkMode ? "bi-sun" : "bi-moon-stars")"></i>
-</button>
+<div class="d-flex align-items-center gap-2">
+    <i class="bi bi-palette"></i>
+    <select class="form-select form-select-sm" style="width: auto;" @onchange="OnThemeChanged" value="@ThemeService.CurrentTheme">
+        <option value="@ThemeMode.Light">Light</option>
+        <option value="@ThemeMode.Dark">Dark</option>
+        <option value="@ThemeMode.Dracula">Dracula</option>
+    </select>
+</div>
 
 @code {
-    private async Task ToggleTheme()
+    private async Task OnThemeChanged(ChangeEventArgs e)
     {
-        await ThemeService.ToggleDarkModeAsync();
+        if (e.Value is string theme)
+        {
+            await ThemeService.SetThemeAsync(theme);
+        }
     }
 }

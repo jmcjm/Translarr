@@ -1,0 +1,158 @@
+/* Dracula Theme for Bootstrap 5 */
+/* Based on GTK Libadwaita Dracula color scheme */
+
+[data-theme="dracula"] {
+    /* Base colors from GTK theme */
+    --dracula-window-bg: #282a36;
+    --dracula-view-bg: #1c1d25;
+    --dracula-foreground: #f8f8f2;
+    --dracula-comment: #3a3d4c;
+
+    /* Accent colors */
+    --dracula-accent: #745270;
+    --dracula-purple: #745270;
+    --dracula-pink: #ff79c6;
+
+    /* State colors */
+    --dracula-success: #50fa7b;
+    --dracula-warning: #f1fa8c;
+    --dracula-warning-fg: rgba(0, 0, 0, 0.8);
+    --dracula-error: #ff5555;
+    --dracula-destructive: #ff5555;
+
+    /* Additional colors */
+    --dracula-cyan: #8be9fd;
+    --dracula-green: #50fa7b;
+    --dracula-orange: #ffb86c;
+    --dracula-red: #ff5555;
+    --dracula-yellow: #f1fa8c;
+
+    /* Card and surfaces */
+    --dracula-card-bg: rgb(40, 42, 54);
+    --dracula-shade: rgba(0, 0, 0, 0.36);
+
+    /* Bootstrap variable overrides */
+    --bs-body-bg: var(--dracula-view-bg);
+    --bs-body-color: var(--dracula-foreground);
+    --bs-body-bg-rgb: 28, 29, 37;
+    --bs-body-color-rgb: 248, 248, 242;
+    --bs-primary-bg-subtle: var(--dracula-shade);
+    --bs-info-bg-subtle: rgb(65, 68, 80);
+    --bs-info-text-emphasis: var(--dracula-cyan);
+
+    /* Theme colors */
+    --bs-primary: var(--dracula-accent);
+    --bs-primary-rgb: 189, 147, 249;
+    --bs-secondary: var(--dracula-comment);
+    --bs-secondary-rgb: rgb(182, 181, 179);
+    --bs-success: var(--dracula-success);
+    --bs-success-rgb: 80, 250, 123;
+    --bs-info: var(--dracula-cyan);
+    --bs-info-rgb: 139, 233, 253;
+    --bs-warning: var(--dracula-warning);
+    --bs-warning-rgb: 241, 250, 140;
+    --bs-danger: var(--dracula-destructive);
+    --bs-danger-rgb: 255, 85, 85;
+    --bs-light: var(--dracula-card-bg);
+    --bs-light-rgb: 255, 255, 255;
+    --bs-dark: var(--dracula-foreground);
+    --bs-dark-rgb: 248, 248, 242;
+
+    /* Links */
+    --bs-link-color: var(--dracula-cyan);
+    --bs-link-color-rgb: 139, 233, 253;
+    --bs-link-hover-color: var(--dracula-pink);
+    --bs-link-hover-color-rgb: 255, 121, 198;
+
+    /* Borders */
+    --bs-border-color: var(--dracula-comment);
+    --bs-border-color-translucent: rgba(98, 114, 164, 0.4);
+
+    /* Form controls */
+    --bs-form-valid-color: var(--dracula-success);
+    --bs-form-valid-border-color: var(--dracula-success);
+    --bs-form-invalid-color: var(--dracula-error);
+    --bs-form-invalid-border-color: var(--dracula-error);
+
+    /* Headings */
+    --bs-heading-color: var(--dracula-pink);
+
+    /* Emphasis colors */
+    --bs-emphasis-color: var(--dracula-foreground);
+    --bs-emphasis-color-rgb: 248, 248, 242;
+
+    /* Secondary colors */
+    --bs-secondary-color: rgba(248, 248, 242, 0.75);
+    --bs-secondary-bg: var(--dracula-card-bg);
+    --bs-secondary-bg-rgb: 255, 255, 255;
+
+    /* Tertiary colors */
+    --bs-tertiary-color: rgba(248, 248, 242, 0.5);
+    --bs-tertiary-bg: rgba(255, 255, 255, 0.05);
+    --bs-tertiary-bg-rgb: 255, 255, 255;
+
+    /* Code */
+    --bs-code-color: var(--dracula-pink);
+
+    /* Navbar */
+    color-scheme: dark;
+}
+
+/* Additional component overrides for better Dracula integration */
+[data-theme="dracula"] .navbar {
+    background-color: var(--dracula-window-bg) !important;
+    border-bottom: 1px solid var(--dracula-comment);
+}
+
+[data-theme="dracula"] .card {
+    background-color: var(--dracula-card-bg);
+    border-color: var(--dracula-comment);
+}
+
+[data-theme="dracula"] .table {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.05);
+    --bs-table-hover-bg: rgba(189, 147, 249, 0.1);
+    --bs-table-border-color: var(--dracula-comment);
+    color: var(--dracula-foreground);
+}
+
+[data-theme="dracula"] .form-control,
+[data-theme="dracula"] .form-select {
+    background-color: var(--dracula-card-bg);
+    border-color: var(--dracula-comment);
+    color: var(--dracula-foreground);
+}
+
+[data-theme="dracula"] .form-control:focus,
+[data-theme="dracula"] .form-select:focus {
+    background-color: var(--dracula-card-bg);
+    border-color: var(--dracula-accent);
+    color: var(--dracula-foreground);
+    box-shadow: 0 0 0 0.25rem rgba(189, 147, 249, 0.25);
+}
+
+[data-theme="dracula"] .btn-primary {
+    --bs-btn-bg: var(--dracula-accent);
+    --bs-btn-border-color: var(--dracula-accent);
+    --bs-btn-hover-bg: var(--dracula-pink);
+    --bs-btn-hover-border-color: var(--dracula-pink);
+    --bs-btn-active-bg: var(--dracula-pink);
+    --bs-btn-active-border-color: var(--dracula-pink);
+}
+
+[data-theme="dracula"] .btn-warning {
+    --bs-btn-color: var(--dracula-warning-fg);
+    --bs-btn-bg: var(--dracula-warning);
+    --bs-btn-border-color: var(--dracula-warning);
+}
+
+[data-theme="dracula"] .modal-content {
+    background-color: var(--dracula-window-bg);
+    border-color: var(--dracula-comment);
+}
+
+[data-theme="dracula"] .offcanvas {
+    background-color: var(--dracula-window-bg);
+    border-color: var(--dracula-comment);
+}

@@ -5,7 +5,7 @@ namespace Translarr.Frontend.HavitWebApp.Services;
 public class ThemeService
 {
     private readonly IJSRuntime _jsRuntime;
-    private bool _isDarkMode;
+    private string _currentTheme = ThemeMode.Light;
 
     public event Action? OnThemeChanged;
 
@@ -14,25 +14,25 @@ public class ThemeService
         _jsRuntime = jsRuntime;
     }
 
-    public bool IsDarkMode => _isDarkMode;
+    public string CurrentTheme => _currentTheme;
 
     public async Task InitializeAsync()
     {
         try
         {
             var savedTheme = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
-            _isDarkMode = savedTheme == "dark";
+            _currentTheme = string.IsNullOrEmpty(savedTheme) ? ThemeMode.Light : savedTheme;
             await ApplyThemeAsync();
         }
         catch
         {
-            _isDarkMode = false;
+            _currentTheme = ThemeMode.Light;
         }
     }
 
-    public async Task ToggleDarkModeAsync()
+    public async Task SetThemeAsync(string theme)
     {
-        _isDarkMode = !_isDarkMode;
+        _currentTheme = theme;
         await ApplyThemeAsync();
         OnThemeChanged?.Invoke();
     }
@@ -41,15 +41,32 @@ public class ThemeService
     {
         try
         {
-            var theme = _isDarkMode ? "dark" : "light";
-            await _jsRuntime.InvokeVoidAsync("eval",
-                $"document.documentElement.setAttribute('data-bs-theme', '{theme}')");
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "theme", theme);
+            // Dracula używa custom data-theme attribute
+            if (_currentTheme == ThemeMode.Dracula)
+            {
+                await _jsRuntime.InvokeVoidAsync("eval",
+                    "document.documentElement.setAttribute('data-theme', 'dracula'); document.documentElement.removeAttribute('data-bs-theme')");
+            }
+            else
+            {
+                // Light/Dark używają Bootstrap data-bs-theme
+                await _jsRuntime.InvokeVoidAsync("eval",
+                    $"document.documentElement.setAttribute('data-bs-theme', '{_currentTheme}'); document.documentElement.removeAttribute('data-theme')");
+            }
+
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "theme", _currentTheme);
         }
         catch
         {
             // JS interop may not be available during prerendering
         }
     }
+}
+
+public static class ThemeMode
+{
+    public const string Light = "light";
+    public const string Dark = "dark";
+    public const string Dracula = "dracula";
 }
 

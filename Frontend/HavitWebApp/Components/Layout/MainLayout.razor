@@ -27,7 +27,7 @@
         </aside>
 
         <!-- Sidebar - Mobile (offcanvas) -->
-        <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel" data-bs-theme="@(ThemeService.IsDarkMode ? "dark" : "light")">
+        <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel" data-bs-theme="@GetOffcanvasTheme()">
             <div class="offcanvas-header">
                 <h5 class="offcanvas-title" id="sidebarLabel">
                     <i class="bi bi-translate me-2"></i>
@@ -60,5 +60,11 @@
     public void Dispose()
     {
         ThemeService.OnThemeChanged -= StateHasChanged;
+    }
+
+    private string GetOffcanvasTheme()
+    {
+        // Dracula i Dark używają dark Bootstrap theme dla offcanvas
+        return ThemeService.CurrentTheme == ThemeMode.Light ? "light" : "dark";
     }
 }
