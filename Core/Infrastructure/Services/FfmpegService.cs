@@ -104,11 +104,27 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
         {
             logger.LogInformation("Extracting subtitles for {file} stream {stream} with codec {codec}", videoPath, streamIndex, codecName);
 
+            // Map codec name to ffmpeg output format
+            var outputFormat = codecName.ToLowerInvariant() switch
+            {
+                "subrip" => "srt",
+                "ass" => "ass",
+                "ssa" => "ass",
+                "mov_text" => "srt",
+                "webvtt" => "webvtt",
+                "dvd_subtitle" => "srt",
+                "dvdsub" => "srt",
+                "hdmv_pgs_subtitle" => "srt",
+                _ => "srt" // Default fallback to SRT
+            };
+
+            logger.LogInformation("Using output format: {format}", outputFormat);
+
             await FFMpegArguments
                 .FromFileInput(videoPath)
                 .OutputToFile(outputPath, true, options => options
                     .SelectStream(streamIndex)
-                    .ForceFormat(codecName))
+                    .ForceFormat(outputFormat))
                 .ProcessAsynchronously();
 
             return File.Exists(outputPath);
