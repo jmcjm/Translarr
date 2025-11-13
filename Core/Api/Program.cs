@@ -1,5 +1,4 @@
 using Microsoft.OpenApi;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using SwaggerThemes;
 using Translarr.Core.Api.Endpoints;
 using Translarr.Core.Api.Middleware;

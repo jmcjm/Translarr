@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Translarr.Core.Api.Helpers;
 using Translarr.Core.Api.Models;
-using Translarr.Core.Application.Abstractions.Repositories;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
 

@@ -1,5 +1,4 @@
 using Havit.Blazor.Components.Web;
-using Havit.Blazor.Components.Web.Bootstrap;
 using Translarr.Frontend.HavitWebApp.Components;
 using Translarr.Frontend.HavitWebApp.Services;
 using Translarr.Frontend.Shared.Services;

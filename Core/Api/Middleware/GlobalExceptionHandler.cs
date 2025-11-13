@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 
 namespace Translarr.Core.Api.Middleware;
