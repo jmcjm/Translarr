@@ -90,16 +90,6 @@ public partial class SubtitleTranslationService(
         int totalFiles,
         Action<TranslationProgressUpdate>? onProgressUpdate)
     {
-        void ReportProgress(TranslationStep step)
-        {
-            onProgressUpdate?.Invoke(new TranslationProgressUpdate(
-                TotalFiles: totalFiles,
-                ProcessedFiles: currentIndex,
-                CurrentFileName: entry.FileName,
-                CurrentStep: step
-            ));
-        }
-
         // 1. Check rate limit
         ReportProgress(TranslationStep.CheckingRateLimit);
         if (!await apiUsageService.CanMakeRequestAsync(settings.Model))
@@ -205,6 +195,18 @@ public partial class SubtitleTranslationService(
             {
                 File.Delete(extractedSubtitlePath);
             }
+        }
+
+        return;
+
+        void ReportProgress(TranslationStep step)
+        {
+            onProgressUpdate?.Invoke(new TranslationProgressUpdate(
+                TotalFiles: totalFiles,
+                ProcessedFiles: currentIndex,
+                CurrentFileName: entry.FileName,
+                CurrentStep: step
+            ));
         }
     }
 
