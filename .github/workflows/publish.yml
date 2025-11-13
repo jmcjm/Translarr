@@ -30,7 +30,19 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 5. Publish 
-      - name: Publish artifacts
-        run: cd Core/Api && dotnet publish /t:PublishContainer && cd ../../Frontend/WebApp && dotnet publish /t:PublishContainer
+      # 5. Publish API
+      - name: Publish Core/Api
+        run: cd Core/Api && dotnet publish /t:PublishContainer
+
+      # 6. Publish HavitWebApp
+      - name: Publish Frontend/HavitWebApp
+        run: cd Frontend/HavitWebApp && dotnet publish /t:PublishContainer
+
+      # 7. Publish MudBlazorWebApp
+      - name: Publish Frontend/MudBlazorWebApp
+        run: cd Frontend/MudBlazorWebApp && dotnet publish /t:PublishContainer
+
+      # 8. Publish RadzenWebApp
+      - name: Publish Frontend/RadzenWebApp
+        run: cd Frontend/RadzenWebApp && dotnet publish /t:PublishContainer
 
