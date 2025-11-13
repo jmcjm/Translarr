@@ -1,10 +1,11 @@
 using MudBlazor;
 using MudBlazor.Services;
-using Translarr.Frontend.WebApp.Components;
+using Translarr.Frontend.MudBlazorWebApp.Components;
+using Translarr.Frontend.MudBlazorWebApp.Services;
 using Translarr.Frontend.Shared.Services;
-using Translarr.Frontend.WebApp.Services;
+using Translarr.ServiceDefaults;
 
-namespace Translarr.Frontend.WebApp;
+namespace Translarr.Frontend.MudBlazorWebApp;
 
 public class Program
 {

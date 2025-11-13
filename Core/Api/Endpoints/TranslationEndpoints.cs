@@ -14,14 +14,12 @@ public static class TranslationEndpoints
     {
         group.MapPost("/translate", StartTranslation)
             .WithName("StartTranslation")
-            .WithOpenApi()
             .Produces<TranslationResultDto>()
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/status", GetTranslationStatus)
             .WithName("GetTranslationStatus")
-            .WithOpenApi()
             .Produces<TranslationStatus>();
 
         return group;

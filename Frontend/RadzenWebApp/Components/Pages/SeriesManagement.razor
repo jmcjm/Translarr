@@ -1,0 +1,336 @@
+@page "/series"
+@inject SeriesWatchApiService SeriesWatchService
+@inject NotificationService NotificationService
+
+<PageTitle>Series Management - Translarr</PageTitle>
+
+<RadzenText TextStyle="TextStyle.H3" class="rz-mb-4">Series Management</RadzenText>
+
+<RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary rz-mb-4">
+    Manage auto-watch settings and bulk operations for your series and seasons.
+</RadzenText>
+
+@if (_isLoading)
+{
+    <div class="rz-text-align-center rz-my-4">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+
+@if (_seriesGroups != null && _seriesGroups.Any())
+{
+    <RadzenCard class="rz-mb-4">
+        <RadzenTextBox Placeholder="Search series..."
+                       @bind-Value="_searchText"
+                       @oninput="OnSearchInput"
+                       Style="width: 100%;" />
+    </RadzenCard>
+
+    <RadzenStack Gap="1rem">
+        @foreach (var series in _filteredSeriesGroups)
+        {
+            <RadzenCard>
+                <!-- Series Header -->
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" class="rz-mb-3">
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                        <RadzenIcon Icon="tv" Style="font-size: 1.5rem;" />
+                        <RadzenText TextStyle="TextStyle.H5" style="margin: 0;">@series.SeriesName</RadzenText>
+                        @if (series.IsWatched)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="Watched" />
+                        }
+                    </RadzenStack>
+                    <RadzenButton Icon="@(_expandedSeries.Contains(series.SeriesName) ? "expand_less" : "expand_more")"
+                                  ButtonStyle="ButtonStyle.Light"
+                                  Size="ButtonSize.Medium"
+                                  Click="@(() => ToggleSeriesExpanded(series.SeriesName))" />
+                </RadzenStack>
+
+                <!-- Series Stats -->
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="2rem" Wrap="FlexWrap.Wrap" class="rz-mb-3">
+                    <RadzenText class="rz-color-secondary">
+                        <strong>Total:</strong> @series.TotalFiles files
+                    </RadzenText>
+                    <RadzenText Style="color: var(--rz-warning);">
+                        <strong>Wanted:</strong> @series.WantedFiles
+                    </RadzenText>
+                    <RadzenText Style="color: var(--rz-success);">
+                        <strong>Processed:</strong> @series.ProcessedFiles
+                    </RadzenText>
+                </RadzenStack>
+
+                <!-- Series Actions -->
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap" AlignItems="AlignItems.Center" class="rz-mb-3">
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                        <RadzenSwitch @bind-Value="@series.IsWatched"
+                                      Change="@(async (bool value) => await ToggleSeriesWatch(series.SeriesName, value))" />
+                        <RadzenLabel Text="Auto-watch entire series" />
+                    </RadzenStack>
+
+                    <RadzenButton Text="Mark All Wanted"
+                                  Icon="check_circle"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Variant="Variant.Outlined"
+                                  Size="ButtonSize.Small"
+                                  Click="@(() => BulkMarkWanted(series.SeriesName, null, true))" />
+
+                    <RadzenButton Text="Mark All Unwanted"
+                                  Icon="cancel"
+                                  ButtonStyle="ButtonStyle.Secondary"
+                                  Variant="Variant.Outlined"
+                                  Size="ButtonSize.Small"
+                                  Click="@(() => BulkMarkWanted(series.SeriesName, null, false))" />
+                </RadzenStack>
+
+                <!-- Seasons (Expandable) -->
+                @if (_expandedSeries.Contains(series.SeriesName))
+                {
+                    <hr style="margin: 1rem 0;" />
+                    <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">Seasons</RadzenText>
+
+                    <RadzenRow Gap="1rem">
+                        @foreach (var season in series.Seasons)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenCard Style="border: 1px solid var(--rz-base-300);">
+                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" class="rz-mb-2">
+                                        <RadzenText TextStyle="TextStyle.H6" style="margin: 0;">@season.SeasonName</RadzenText>
+                                        @if (season.IsWatched)
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="Watched" />
+                                        }
+                                    </RadzenStack>
+
+                                    <RadzenText TextStyle="TextStyle.Caption" class="rz-color-secondary rz-mb-2">
+                                        @season.TotalFiles files | @season.WantedFiles wanted | @season.ProcessedFiles processed
+                                    </RadzenText>
+
+                                    @if (!series.IsWatched)
+                                    {
+                                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" class="rz-mb-2">
+                                            <RadzenSwitch @bind-Value="@season.IsWatched"
+                                                          Change="@(async (bool value) => await ToggleSeasonWatch(series.SeriesName, season.SeasonName, value))" />
+                                            <RadzenLabel Text="Auto-watch season" />
+                                        </RadzenStack>
+                                    }
+                                    else
+                                    {
+                                        <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Size="AlertSize.Small" class="rz-mb-2">
+                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem" AlignItems="AlignItems.Center">
+                                                <RadzenIcon Icon="info" Style="font-size: 0.875rem;" />
+                                                <RadzenText TextStyle="TextStyle.Caption">Auto-watch inherited from series</RadzenText>
+                                            </RadzenStack>
+                                        </RadzenAlert>
+                                    }
+
+                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                                        <RadzenButton Text="Mark Wanted"
+                                                      Icon="check_circle"
+                                                      ButtonStyle="ButtonStyle.Primary"
+                                                      Variant="Variant.Outlined"
+                                                      Size="ButtonSize.Small"
+                                                      Click="@(() => BulkMarkWanted(series.SeriesName, season.SeasonName, true))" />
+
+                                        <RadzenButton Text="Mark Unwanted"
+                                                      Icon="cancel"
+                                                      ButtonStyle="ButtonStyle.Secondary"
+                                                      Variant="Variant.Outlined"
+                                                      Size="ButtonSize.Small"
+                                                      Click="@(() => BulkMarkWanted(series.SeriesName, season.SeasonName, false))" />
+                                    </RadzenStack>
+                                </RadzenCard>
+                            </RadzenColumn>
+                        }
+                    </RadzenRow>
+                }
+            </RadzenCard>
+        }
+    </RadzenStack>
+}
+else if (!_isLoading)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat">
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+            <RadzenIcon Icon="info" />
+            <RadzenText>No series found. Run a library scan to populate your media library.</RadzenText>
+        </RadzenStack>
+    </RadzenAlert>
+}
+
+@code {
+    private List<SeriesGroupDto>? _seriesGroups;
+    private List<SeriesGroupDto> _filteredSeriesGroups = [];
+    private readonly HashSet<string> _expandedSeries = [];
+    private bool _isLoading = true;
+    private string _searchText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSeriesGroups();
+    }
+
+    private async Task LoadSeriesGroups()
+    {
+        try
+        {
+            _isLoading = true;
+            _seriesGroups = await SeriesWatchService.GetSeriesGroupsAsync() ?? [];
+            FilterSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Error loading series: {ex.Message}",
+                Duration = 4000
+            });
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void FilterSeriesGroups()
+    {
+        if (_seriesGroups == null)
+        {
+            _filteredSeriesGroups = [];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            _filteredSeriesGroups = _seriesGroups;
+        }
+        else
+        {
+            var search = _searchText.ToLowerInvariant();
+            _filteredSeriesGroups = _seriesGroups
+                .Where(s => s.SeriesName.ToLowerInvariant().Contains(search))
+                .ToList();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchText = e.Value?.ToString() ?? string.Empty;
+        FilterSeriesGroups();
+    }
+
+    private void ToggleSeriesExpanded(string seriesName)
+    {
+        if (!_expandedSeries.Add(seriesName))
+            _expandedSeries.Remove(seriesName);
+    }
+
+    private async Task ToggleSeriesWatch(string seriesName, bool watched)
+    {
+        try
+        {
+            var result = await SeriesWatchService.SetAutoWatchAsync(seriesName, null, watched);
+            if (result != null && watched)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = $"Auto-watch enabled for '{seriesName}'. {result.FilesMarkedWanted} files marked as wanted.",
+                    Duration = 4000
+                });
+            }
+            else if (!watched)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Info,
+                    Summary = "Info",
+                    Detail = $"Auto-watch disabled for '{seriesName}'.",
+                    Duration = 3000
+                });
+            }
+
+            await LoadSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Error toggling watch: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    private async Task ToggleSeasonWatch(string seriesName, string seasonName, bool watched)
+    {
+        try
+        {
+            var result = await SeriesWatchService.SetAutoWatchAsync(seriesName, seasonName, watched);
+            if (result != null && watched)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = $"Auto-watch enabled for '{seriesName} - {seasonName}'. {result.FilesMarkedWanted} files marked as wanted.",
+                    Duration = 4000
+                });
+            }
+            else if (!watched)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Info,
+                    Summary = "Info",
+                    Detail = $"Auto-watch disabled for '{seriesName} - {seasonName}'.",
+                    Duration = 3000
+                });
+            }
+
+            await LoadSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Error toggling watch: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+
+    private async Task BulkMarkWanted(string seriesName, string? seasonName, bool wanted)
+    {
+        try
+        {
+            var count = await SeriesWatchService.BulkSetWantedAsync(seriesName, seasonName, wanted);
+            var scope = seasonName != null ? $"{seriesName} - {seasonName}" : seriesName;
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Success",
+                Detail = $"{count} files in '{scope}' marked as {(wanted ? "wanted" : "unwanted")}.",
+                Duration = 4000
+            });
+
+            await LoadSeriesGroups();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Error bulk updating: {ex.Message}",
+                Duration = 4000
+            });
+        }
+    }
+}

@@ -13,36 +13,30 @@ public static class LibraryEndpoints
     {
         group.MapPost("/scan", ScanLibrary)
             .WithName("ScanLibrary")
-            .WithOpenApi()
             .Produces<ScanResultDto>()
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/entries", GetEntries)
             .WithName("GetEntries")
-            .WithOpenApi()
             .Produces<PagedResult<SubtitleEntryDto>>();
 
         group.MapGet("/entries/{id:int}", GetEntryById)
             .WithName("GetEntryById")
-            .WithOpenApi()
             .Produces<SubtitleEntryDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         group.MapPatch("/entries/{id:int}/wanted", UpdateWantedStatus)
             .WithName("UpdateWantedStatus")
-            .WithOpenApi()
             .Produces<SubtitleEntryDto>()
             .Produces(StatusCodes.Status404NotFound);
-        
+
         group.MapPatch("/entries/{id:int}/force", UpdateForceProcessStatus)
             .WithName("UpdateForceProcessStatus")
-            .WithOpenApi()
             .Produces<SubtitleEntryDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         group.MapPut("/bulk/wanted", BulkUpdateWantedStatus)
             .WithName("BulkUpdateWantedStatus")
-            .WithOpenApi()
             .Produces<BulkUpdateResult>()
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest);
 

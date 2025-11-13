@@ -1,7 +1,7 @@
 using Microsoft.JSInterop;
 using MudBlazor;
 
-namespace Translarr.Frontend.WebApp.Services;
+namespace Translarr.Frontend.MudBlazorWebApp.Services;
 
 public class ThemeService
 {

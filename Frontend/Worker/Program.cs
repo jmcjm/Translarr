@@ -1,3 +1,5 @@
+using Translarr.ServiceDefaults;
+
 namespace Translarr.Frontend.Worker;
 
 public class Program

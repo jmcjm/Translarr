@@ -1,7 +1,10 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using SwaggerThemes;
 using Translarr.Core.Api.Endpoints;
 using Translarr.Core.Api.Middleware;
 using Translarr.Core.Infrastructure;
+using Translarr.ServiceDefaults;
 
 namespace Translarr.Core.Api;
 
@@ -25,11 +28,11 @@ public static class Program
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddProblemDetails();
 
-        // Add Swagger/OpenAPI
+        // Add Swagger/OpenAPI with Swashbuckle
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(options =>
+        builder.Services.AddSwaggerGen(c =>
         {
-            options.SwaggerDoc("v1", new OpenApiInfo
+            c.SwaggerDoc("v1", new OpenApiInfo
             {
                 Title = "Translarr API",
                 Version = "v1",
@@ -59,11 +62,13 @@ public static class Program
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
-            app.UseSwaggerUI(options =>
-            {
-                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Translarr API v1");
-                options.RoutePrefix = "swagger"; // Swagger will be available at /swagger
-            });
+            app.UseSwaggerUI(
+                Theme.UniversalDark,
+                setupAction: c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Translarr API v1");
+                    c.RoutePrefix = "swagger";
+                });
         }
 
         // Use exception handler
@@ -74,8 +79,7 @@ public static class Program
         app.UseAuthorization();
 
         // Map API endpoints
-        var apiGroup = app.MapGroup("/api")
-            .WithOpenApi();
+        var apiGroup = app.MapGroup("/api");
 
         apiGroup.MapGroup("/library")
             .MapLibraryEndpoints()
