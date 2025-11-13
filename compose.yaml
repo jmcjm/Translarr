@@ -33,7 +33,7 @@
         condition: service_completed_successfully
 
   translarr-web:
-    image: jmcjm/translarr-web:nightly
+    image: jmcjm/translarr-mudblazor-web:nightly
     container_name: translarr-web
     restart: unless-stopped
     ports:
