@@ -10,7 +10,7 @@
         <Version>$(MajorVersion).$(BuildStamp)</Version>
 
         <ContainerRegistry>docker.io</ContainerRegistry>
-        <ContainerRepository>jmcjm/Translarr-Web</ContainerRepository>
+        <ContainerRepository>jmcjm/Translarr-MudBlazor-Web</ContainerRepository>
         <ContainerImageTags>nightly</ContainerImageTags>
         <ContainerFamily>alpine</ContainerFamily>
     </PropertyGroup>
