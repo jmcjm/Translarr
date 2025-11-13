@@ -12,25 +12,21 @@ public static class SeriesWatchEndpoints
     {
         group.MapGet("/watch-configs", GetAllWatchConfigs)
             .WithName("GetAllWatchConfigs")
-            .WithOpenApi()
             .Produces<List<SeriesWatchConfigDto>>();
 
         group.MapPut("/watch-configs", SetAutoWatch)
             .WithName("SetAutoWatch")
-            .WithOpenApi()
             .Produces<SetAutoWatchResult>()
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict);
 
         group.MapDelete("/watch-configs", RemoveAutoWatch)
             .WithName("RemoveAutoWatch")
-            .WithOpenApi()
             .Produces<bool>()
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
 
         group.MapGet("/series", GetSeriesGroups)
             .WithName("GetSeriesGroups")
-            .WithOpenApi()
             .Produces<List<SeriesGroupDto>>();
 
         return group;

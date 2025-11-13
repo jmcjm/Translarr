@@ -12,24 +12,20 @@ public static class SettingsEndpoints
     {
         group.MapGet("/", GetAllSettings)
             .WithName("GetAllSettings")
-            .WithOpenApi()
             .Produces<List<AppSettingDto>>();
 
         group.MapGet("/{key}", GetSetting)
             .WithName("GetSetting")
-            .WithOpenApi()
             .Produces<AppSettingDto>()
             .Produces(StatusCodes.Status404NotFound);
 
         group.MapPut("/{key}", UpdateSetting)
             .WithName("UpdateSetting")
-            .WithOpenApi()
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("/test-api", TestApiConnection)
             .WithName("TestApiConnection")
-            .WithOpenApi()
             .Produces<ApiTestResult>()
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 

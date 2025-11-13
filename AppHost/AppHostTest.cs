@@ -44,7 +44,7 @@
 //     
 //     
 //
-// // Api and WebApp
+// // Api and MudBlazorWebApp
 // var mediaMountAnnotation = new ContainerMountAnnotation(mediaRootPathOnHost, mediaRootPathInsideContainer, ContainerMountType.BindMount, false);
 //
 // var api = builder.AddProject<Projects.Api>("Translarr-Api")
@@ -58,7 +58,7 @@
 // if (areWePublishing)
 //     api.WaitForCompletion(dbInit);
 //
-// builder.AddProject<Projects.WebApp>("Translarr-Web")
+// builder.AddProject<Projects.MudBlazorWebApp>("Translarr-Web")
 //     .WaitFor(api)
 //     .WithReference(api)
 //     // .WithHealthCheck("/health")

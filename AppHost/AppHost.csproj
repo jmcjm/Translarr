@@ -1,22 +1,24 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-    <Sdk Name="Aspire.AppHost.Sdk" Version="9.5.2"/>
-
+<Project Sdk="Aspire.AppHost.Sdk/13.0.0">
+    
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <UserSecretsId>33b2dcf6-7c04-4135-b368-b736b3f4a0b1</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Aspire.Hosting.AppHost" />
         <PackageReference Include="Aspire.Hosting.Docker" />
         <PackageReference Include="CommunityToolkit.Aspire.Hosting.Sqlite" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Core\Api\Api.csproj" />
-        <ProjectReference Include="..\Frontend\WebApp\WebApp.csproj" />
+        <ProjectReference Include="..\Frontend\MudBlazorWebApp\MudBlazorWebApp.csproj" />
         <ProjectReference Include="..\Frontend\HavitWebApp\HavitWebApp.csproj" />
+        <ProjectReference Include="..\Frontend\RadzenWebApp\RadzenWebApp.csproj" />
         <ProjectReference Include="..\Frontend\Worker\Worker.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageVersion Update="CommunityToolkit.Aspire.Hosting.Sqlite" Version="13.0.0-beta.439" />
     </ItemGroup>
 </Project>

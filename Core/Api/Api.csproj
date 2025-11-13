@@ -18,8 +18,9 @@
     
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Aspire.Microsoft.Data.Sqlite" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
         <PackageReference Include="Swashbuckle.AspNetCore" />
+        <PackageReference Include="Microsoft.OpenApi" />
+        <PackageReference Include="oqo0.SwaggerThemes" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

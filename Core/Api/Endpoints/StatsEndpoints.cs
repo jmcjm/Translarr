@@ -12,12 +12,10 @@ public static class StatsEndpoints
     {
         group.MapGet("/api-usage", GetApiUsageStats)
             .WithName("GetApiUsageStats")
-            .WithOpenApi()
             .Produces<List<ApiUsageDto>>();
 
         group.MapGet("/library-stats", GetLibraryStats)
             .WithName("GetLibraryStats")
-            .WithOpenApi()
             .Produces<LibraryStats>();
 
         return group;

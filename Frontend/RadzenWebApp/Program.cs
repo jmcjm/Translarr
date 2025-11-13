@@ -1,11 +1,9 @@
-using Havit.Blazor.Components.Web;
-using Havit.Blazor.Components.Web.Bootstrap;
-using Translarr.Frontend.HavitWebApp.Components;
-using Translarr.Frontend.HavitWebApp.Services;
+using Radzen;
+using Translarr.Frontend.RadzenWebApp.Components;
 using Translarr.Frontend.Shared.Services;
 using Translarr.ServiceDefaults;
 
-namespace Translarr.Frontend.HavitWebApp;
+namespace Translarr.Frontend.RadzenWebApp;
 
 public class Program
 {
@@ -19,12 +17,8 @@ public class Program
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
-        // Add Havit.Blazor services
-        builder.Services.AddHxServices();
-        builder.Services.AddHxMessenger();
-
-        // Add Theme Service
-        builder.Services.AddScoped<ThemeService>();
+        // Add Radzen services (includes ThemeService)
+        builder.Services.AddRadzenComponents();
 
         // Configure HttpClient for API communication
         // In Docker Compose: uses ApiBaseUrl from environment variable

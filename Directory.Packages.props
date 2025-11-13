@@ -6,64 +6,62 @@
   <ItemGroup Label="Core Framework">
     <PackageVersion Include="ErrorOr" Version="2.0.1" />
     <PackageVersion Include="MudBlazor.Markdown" Version="8.11.0" />
+    <PackageVersion Include="Radzen.Blazor" Version="8.3.0" />
   </ItemGroup>
   <ItemGroup Label="ASP.NET Core and Web">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageVersion Include="Asp.Versioning.Http" Version="8.1.0" />
   </ItemGroup>
   <ItemGroup Label="Entity Framework Core">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup Label="Microsoft Extensions">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.FileExtensions" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.10.0" />
-    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.5.2" />
+    <!--    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.10" />-->
+    <!--    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />-->
+    <!--    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.10" />-->
+    <!--    <PackageVersion Include="Microsoft.Extensions.Configuration.FileExtensions" Version="9.0.10" />-->
+    <!--    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />-->
+    <!--    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />-->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
+    <!--    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="9.0.10" />-->
+    <!--    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />-->
+    <!--    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.10" />-->
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup Label="Aspire">
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.5.2" />
-    <PackageVersion Include="Aspire.Hosting.Docker" Version="9.5.2-preview.1.25522.3" />
+    <PackageVersion Include="Aspire.Hosting.Docker" Version="13.0.0-preview.1.25560.3" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="9.5.1" />
     <PackageVersion Include="Aspire.StackExchange.Redis.OutputCaching" Version="9.5.1" />
   </ItemGroup>
   <ItemGroup Label="Observability and Telemetry">
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.13.1" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.13.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.13.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.13.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.13.0" />
   </ItemGroup>
   <ItemGroup Label="Swagger and OpenAPI">
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="9.0.6" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.Annotations" Version="9.0.6" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.Swagger" Version="9.0.6" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.6" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.6" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.3.0" />
+    <PackageVersion Include="oqo0.SwaggerThemes" Version="1.4.0" />
   </ItemGroup>
   <ItemGroup Label="Media Processing">
     <PackageVersion Include="FFMpegCore" Version="5.4.0" />
   </ItemGroup>
   <ItemGroup Label="AI">
-    <PackageVersion Include="Mscc.GenerativeAI" Version="2.8.23" />
+    <PackageVersion Include="Mscc.GenerativeAI" Version="2.9.1" />
   </ItemGroup>
   <ItemGroup Label="UI Components">
-    <PackageVersion Include="MudBlazor" Version="8.13.0" />
-    <PackageVersion Include="Havit.Blazor.Components.Web.Bootstrap" Version="4.12.0" />
+    <PackageVersion Include="MudBlazor" Version="8.14.0" />
+    <PackageVersion Include="Havit.Blazor.Components.Web.Bootstrap" Version="4.20.0" />
   </ItemGroup>
   <ItemGroup Label="Aspire SQLite">
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.SQLite" Version="9.8.0" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.Data.Sqlite" Version="9.8.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.Data.Sqlite" Version="13.0.0-beta.439" />
   </ItemGroup>
 </Project>
