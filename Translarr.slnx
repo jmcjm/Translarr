@@ -1,15 +1,14 @@
 <Solution>
   <Folder Name="/Core/">
-    <Project Path="Core/Api/Api.csproj" Type="C#" />
-    <Project Path="Core/Application/Application.csproj" Type="C#" />
-    <Project Path="Core/Infrastructure/Infrastructure.csproj" Type="C#" />
+    <Project Path="Core/Api/Api.csproj" />
+    <Project Path="Core/Application/Application.csproj" />
+    <Project Path="Core/Infrastructure/Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Frontend/">
-    <Project Path="Frontend/Shared/Shared.csproj" Type="C#" />
-    <Project Path="Frontend/HavitWebApp/HavitWebApp.csproj" Type="C#" />
-    <Project Path="Frontend/RadzenWebApp/RadzenWebApp.csproj" Type="C#" />
-    <Project Path="Frontend/Worker/Worker.csproj" Type="C#" />
-    <Project Path="Frontend\MudBlazorWebApp\MudBlazorWebApp.csproj" Type="C#" />
+    <Project Path="Frontend/Shared/Shared.csproj" />
+    <Project Path="Frontend/HavitWebApp/HavitWebApp.csproj" />
+    <Project Path="Frontend/RadzenWebApp/RadzenWebApp.csproj" />
+    <Project Path="Frontend\MudBlazorWebApp\MudBlazorWebApp.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="compose.yaml" />
@@ -20,6 +19,6 @@
     <File Path="LICENSE" />
     <File Path=".github/workflows/publish.yml" />
   </Folder>
-  <Project Path="AppHost\AppHost.csproj" Type="C#" />
-  <Project Path="ServiceDefaults\ServiceDefaults.csproj" Type="C#" />
+  <Project Path="AppHost\AppHost.csproj" />
+  <Project Path="ServiceDefaults\ServiceDefaults.csproj" />
 </Solution>

@@ -15,7 +15,6 @@
         <ProjectReference Include="..\Frontend\MudBlazorWebApp\MudBlazorWebApp.csproj" />
         <ProjectReference Include="..\Frontend\HavitWebApp\HavitWebApp.csproj" />
         <ProjectReference Include="..\Frontend\RadzenWebApp\RadzenWebApp.csproj" />
-        <ProjectReference Include="..\Frontend\Worker\Worker.csproj" />
     </ItemGroup>
 
     <ItemGroup>
