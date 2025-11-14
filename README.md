@@ -20,9 +20,9 @@
 
 ## 🛠️ Technology Stack
 
-*   **Backend:** .NET 9, ASP.NET Core, Entity Framework Core
+*   **Backend:** .NET 10, ASP.NET Core, Entity Framework Core
 *   **Frontend:** Blazor Server
-*   **UI Framework:** MudBlazor
+*   **UI Framework:** Havit, MudBlazor, Radzen (WIP)
 *   **Database:** SQLite (via ```CommunityToolkit.Aspire.Hosting.SQLite``` and EFCore)
 *   **AI Engine:** Google Gemini API (via ```Mscc.GenerativeAI``` nuget)
 *   **Media Processing:** FFmpeg (via ```FFMpegCore``` nuget)
@@ -41,11 +41,10 @@ The backend itself follows Clean Architecture principles, separating concerns in
 
 ## 🚀 Getting Started - still WIP!
 
-### 🐳 Option 1: Docker Compose (Recommended)
-
+### Docker Compose
 **Prerequisites:**
 - Docker & Docker Compose
-- Google Gemini API Key (get one for free from [Google AI Studio](https://aistudio.google.com/app/apikey))
+- Google Gemini API Key (get one for from [Google AI Studio](https://aistudio.google.com/app/apikey))
 
 **Quick Start:**
 
@@ -77,47 +76,12 @@ The backend itself follows Clean Architecture principles, separating concerns in
 
 For detailed Docker setup instructions, troubleshooting, and backup procedures, see **[DOCKER_SETUP.md](DOCKER_SETUP.md)**.
 
----
-
-### 💻 Option 2: Development with .NET Aspire
-
-**Prerequisites:**
-1.  **[.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)**
-2.  **[FFmpeg](https://ffmpeg.org/download.html)**: Must be installed and accessible from your system's `PATH`.
-3.  **Google Gemini API Key**: You can get one for free from **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
-
-**Installation & Running:**
-
-1.  **Clone the repository:**
-    ```sh
-    git clone https://github.com/jmcjm/Translarr.git
-    cd Translarr
-    ```
-
-2.  **Configure Media Path:**
-    *   Open the `Translarr/AppHost/appsettings.Development.json` file.
-    *   Change the `MediaRootPath` to the absolute path of your media library.
-    ```json
-    {
-      "Logging": { ... },
-      "MediaRootPath": "/path/to/your/videos"
-    }
-    ```
-
-3.  **Run the application:**
-    *   Navigate to the `AppHost` project directory and run it:
-    ```sh
-    cd AppHost
-    dotnet run
-    ```
-    *   .NET Aspire will launch the API, the WebApp, and a dashboard. The Aspire Dashboard URL will be shown in the console, where you can find the endpoint for the Translarr WebApp.
-
 ### Initial Configuration
 
-1.  Open the Translarr web interface in your browser (check the Aspire Dashboard for the correct URL).
+1.  Open the Translarr web interface in your browser.
 2.  Navigate to the **Settings** page from the sidebar.
 3.  Enter your **Google Gemini API Key**.
-4.  Set your **Preferred Subtitle Language** using its two-letter language code (e.g., `pl` for Polish, `es` for Spanish, `fr` for French).
+4.  Set your **Preferred Subtitle Language** using its two-letter language code (e.g., `pl` for Polish, `es` for Spanish).
 5.  Review and adjust other settings like the AI Model or Temperature if desired, then click **Save**.
 
 ## 📖 Usage Workflow
