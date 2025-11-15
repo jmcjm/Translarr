@@ -1,9 +1,9 @@
 # Translarr
 
-[![.NET](https://img.shields.io/badge/.NET-9-blueviolet.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
+[![.NET](https://img.shields.io/badge/.NET-10-blueviolet.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-**Translarr is a self-hosted application designed to automate the process of translating subtitles for your media library.** Inspired by the \*arr suite of tools, Translarr scans your video files, identifies those missing subtitles in your preferred language, and uses the power of Google's Gemini AI to generate and save new, translated subtitle files.
+**Translarr is a self-hosted application designed to automate the process of translating subtitles for your media library.** Inspired by the *arr suite of tools, Translarr scans your video files, identifies those missing subtitles in your preferred language, and uses the power of Google's Gemini AI to generate and save new, translated subtitle files.
 
 ## ✨ Key Features
 
@@ -12,8 +12,8 @@
 *   **🎯 Intelligent Stream Selection:** Analyzes embedded subtitle tracks to select the best source for translation (e.g., prioritizing non-SDH English tracks).
 *   **🤖 AI-Powered Translation:** Leverages the Google Gemini API for high-quality, context-aware subtitle translation. Gemini was specifically chosen for its advantages:  
     * **Large Context Window:** Its ability to handle a large number of tokens allows entire subtitle files to be processed in a single request, ensuring better context retention and translation consistency.
-    *   **Great Free Tier:** The API provides a substantial free tier (100 calls per day to the 2.5 Pro model), making the service highly accessible and cost-effective for personal use.
-*   **✨ Modern Web UI:** A clean, responsive dashboard built with Blazor and MudBlazor to manage your library, monitor progress, and configure settings.
+    *   **Great Free Tier:** The API provides a substantial free tier, making the service highly accessible and cost-effective for personal use.
+*   **✨ Modern Web UI:** A clean, responsive dashboard built with Blazor Server.
 *   **📊 Dashboard & Statistics:** Get a quick overview of your library's state: total files, processed, waiting, and errors.
 *   **🔍 Powerful Library Management:** Search, filter, and sort your media files. Manually toggle the "wanted" status for individual files.
 *   **⚙️ Customizable Settings:** Easily configure your Gemini API key, select the AI model, customize the system prompt, set rate limits, and more.
@@ -22,7 +22,10 @@
 
 *   **Backend:** .NET 10, ASP.NET Core, Entity Framework Core
 *   **Frontend:** Blazor Server
-*   **UI Framework:** Havit, MudBlazor, Radzen (WIP)
+*   **UI Frameworks:** The project includes three separate frontend implementations:
+    *   **Havit:** A feature-rich and robust component library.
+    *   **MudBlazor:** A popular Material Design component library.
+    *   **Radzen:** Another comprehensive set of Blazor components.
 *   **Database:** SQLite (via ```CommunityToolkit.Aspire.Hosting.SQLite``` and EFCore)
 *   **AI Engine:** Google Gemini API (via ```Mscc.GenerativeAI``` nuget)
 *   **Media Processing:** FFmpeg (via ```FFMpegCore``` nuget)
@@ -34,7 +37,7 @@ The project is built using .NET Aspire, following a distributed application mode
 
 *   **`AppHost`**: The Aspire project that orchestrates the different services.
 *   **`Translarr.Core.Api`**: The backend REST API service handling all core logic (scanning, translation, database operations).
-*   **`Translarr.Frontend.WebApp`**: The Blazor Server frontend for the user interface.
+*   **`Translarr.Frondend.HavitWebApp` / `Translarr.Frondend.MudBlazorWebApp` / `Translarr.Frondend.RadzenWebApp`**: The Blazor Server frontends for the user interface.
 *   **`ServiceDefaults`**: A shared project for common configurations like health checks, resilience, and OpenTelemetry.
 
 The backend itself follows Clean Architecture principles, separating concerns into `Application`, `Infrastructure`, and `Api` layers.
@@ -63,6 +66,7 @@ The backend itself follows Clean Architecture principles, separating concerns in
     API_PORT=5000
     WEB_PORT=5001
     ```
+    **Note:** The default `compose.yaml` launches the **MudBlazor** frontend. To use the Havit or Radzen frontends, you will need to modify the `compose.yaml` file or run the project locally using the .NET Aspire `AppHost`.
 
 3.  **Launch the application:**
     ```sh
@@ -91,21 +95,21 @@ For detailed Docker setup instructions, troubleshooting, and backup procedures, 
 3.  **Translate:** Return to the **Dashboard** and click **Start Translation**. Translarr will begin processing the "wanted" files in the queue.
 4.  **Monitor:** You can see the real-time translation progress on the Dashboard. Once completed, the new `.srt` subtitle file (e.g., `My.Episode.S01E01.pl.srt`) will be saved in the same directory as its video file.
 
-## 📸 Screenshots
+## 📸 Screenshots (Havit UI)
 
-[![Translarr Dashboard Screenshot](./.github/assets/Home.png)](.github/assets/Home.png)
-
--------
-
-[![Translarr Library Screenshot](./.github/assets/Library.png)](.github/assets/Library.png)
+[![Translarr Dashboard Screenshot](./.github/assets/DashboardHavit.png)](./.github/assets/DashboardHavit.png)
 
 -------
 
-[![Translarr Statistics Screenshot](./.github/assets/Statistics.png)](.github/assets/Statistics.png)
+[![Translarr Library Screenshot](./.github/assets/LibraryHavit.png)](./.github/assets/LibraryHavit.png)
 
 -------
 
-[![Translarr Settings Screenshot](./.github/assets/Settings.png)](.github/assets/Settings.png)
+[![Translarr Series Management Screenshot](./.github/assets/SeriesManagmentHavit.png)](./.github/assets/SeriesManagmentHavit.png)
+
+-------
+
+[![Translarr Settings Screenshot](./.github/assets/SettingsHavit.png)](./.github/assets/SettingsHavit.png)
 
 ## 🚧 TODO & Future Plans
 

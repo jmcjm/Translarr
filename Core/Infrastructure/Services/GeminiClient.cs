@@ -24,7 +24,18 @@ public class GeminiClient : IGeminiClient
 
         var response = await generativeModel.GenerateContent(subtitlesContent, generationConfig: generationConfig);
 
-        if (response.Text == null)
+        // Gemini filters can sometimes block translations for "safety" reasons, we need to check for that to avoid silent failures
+        // where the translation seems successful, but the outcoming srt file is empty.
+        if (response.PromptFeedback != null)
+        {
+            var blockReason = response.PromptFeedback.BlockReason;
+            var blockReasonMessage = response.PromptFeedback.BlockReasonMessage;
+            
+            throw new InvalidOperationException($"Gemini API blocked this translation and returned prompt feedback: {blockReason} - {blockReasonMessage}");
+        }
+        
+        // Theoretically, the response.Text should never be null or empty if the API wasn't blocked for safety reasons
+        if (response.Text == null || string.IsNullOrWhiteSpace(response.Text))
         {
             throw new InvalidOperationException("Gemini API returned empty response");
         }
