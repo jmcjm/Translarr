@@ -4,7 +4,7 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
 
-public class SettingsService(IAppSettingsRepository repository) : ISettingsService
+public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unitOfWork) : ISettingsService
 {
     public async Task<string?> GetSettingAsync(string key)
     {
@@ -15,7 +15,7 @@ public class SettingsService(IAppSettingsRepository repository) : ISettingsServi
     public async Task UpdateSettingAsync(string key, string value)
     {
         var existingSetting = await repository.GetByKeyAsync(key);
-        
+
         if (existingSetting != null)
         {
             existingSetting.Value = value;
@@ -30,8 +30,10 @@ public class SettingsService(IAppSettingsRepository repository) : ISettingsServi
                 Value = value,
                 UpdatedAt = DateTime.UtcNow
             };
-            await repository.AddAsync(newSetting);
+            repository.Add(newSetting);
         }
+
+        await unitOfWork.SaveChangesAsync();
     }
 
     public async Task<List<AppSettingDto>> GetAllSettingsAsync()

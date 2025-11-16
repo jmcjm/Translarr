@@ -8,11 +8,10 @@ namespace Translarr.Core.Infrastructure.Repositories;
 
 public class ApiUsageRepository(TranslarrDbContext context) : IApiUsageRepository
 {
-    public async Task AddAsync(ApiUsageDto usage)
+    public void Add(ApiUsageDto usage)
     {
         var dao = MapToDao(usage);
         context.ApiUsage.Add(dao);
-        await context.SaveChangesAsync();
     }
 
     public async Task<List<ApiUsageDto>> GetByDateRangeAsync(DateTime from, DateTime to, string? model = null)

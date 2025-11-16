@@ -8,6 +8,7 @@ namespace Translarr.Core.Application.Services;
 
 public partial class SubtitleTranslationService(
     ISubtitleEntryRepository repository,
+    IUnitOfWork unitOfWork,
     ISettingsService settingsService,
     IApiUsageService apiUsageService,
     IFfmpegService ffmpegService,
@@ -63,6 +64,7 @@ public partial class SubtitleTranslationService(
                     // File will be processed again in next attempt
                     entry.ErrorMessage = ex.Message;
                     await repository.UpdateAsync(entry);
+                    await unitOfWork.SaveChangesAsync();
                     processedCount++;
                 }
             }
@@ -110,6 +112,7 @@ public partial class SubtitleTranslationService(
             entry.ProcessedAt = DateTime.UtcNow;
             entry.ErrorMessage = "No suitable embedded subtitles found - skipped";
             await repository.UpdateAsync(entry);
+            await unitOfWork.SaveChangesAsync();
             result.SkippedNoSubtitles++;
             return;
         }
@@ -201,6 +204,8 @@ public partial class SubtitleTranslationService(
                 Model = settings.Model,
                 Date = DateTime.UtcNow
             });
+
+            await unitOfWork.SaveChangesAsync();
 
             result.SuccessCount++;
         }

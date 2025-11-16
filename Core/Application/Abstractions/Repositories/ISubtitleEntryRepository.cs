@@ -25,7 +25,7 @@ public interface ISubtitleEntryRepository
     /// </summary>
     /// <param name="entry">The subtitle entry to be added.</param>
     /// <returns>A task that represents the asynchronous add operation.</returns>
-    Task AddAsync(SubtitleEntryDto entry);
+    void Add(SubtitleEntryDto entry);
 
     /// <summary>
     /// Updates the provided subtitle entry in the repository.

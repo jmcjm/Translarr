@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,13 +17,28 @@ public static class DependencyInjection
     {
         // Database - uses connection string from Aspire or fallback for development
         var connectionString = configuration.GetConnectionString("translarr-db") ?? throw new ArgumentException("Connection string not found.");
-        
+
+        // Configure SQLite connection with WAL mode and shared cache
+        var builder = new SqliteConnectionStringBuilder(connectionString)
+        {
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Cache = SqliteCacheMode.Shared
+        };
+
         services.AddDbContext<TranslarrDbContext>(options =>
-            options.UseSqlite(connectionString));
+        {
+            options.UseSqlite(builder.ToString(), sqliteOptions =>
+            {
+                sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+            });
+        });
         
         // Database Initializer
         services.AddScoped<TranslarrDatabaseInitializer>();
         
+        // Unit of Work
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
         // Repositories
         services.AddScoped<ISubtitleEntryRepository, SubtitleEntryRepository>();
         services.AddScoped<IAppSettingsRepository, AppSettingsRepository>();

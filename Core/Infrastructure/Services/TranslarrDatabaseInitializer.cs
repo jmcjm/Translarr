@@ -12,10 +12,17 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
         try
         {
             await CheckConnectionAsync();
+
+            // Enable WAL mode and set busy timeout for better concurrency
+            logger.LogInformation("Configuring SQLite with WAL mode and busy timeout...");
+            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+            await context.Database.ExecuteSqlRawAsync("PRAGMA busy_timeout=5000;");
+            logger.LogInformation("SQLite configured successfully");
+
             logger.LogInformation("Applying migrations...");
             await context.Database.MigrateAsync();
             logger.LogInformation("Migrations applied successfully");
-            
+
             await SeedDefaultSettingsAsync();
         }
         catch (Exception ex)
