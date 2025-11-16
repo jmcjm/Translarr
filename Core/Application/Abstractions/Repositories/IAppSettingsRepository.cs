@@ -6,7 +6,7 @@ public interface IAppSettingsRepository
 {
     Task<AppSettingDto?> GetByKeyAsync(string key);
     Task<List<AppSettingDto>> GetAllAsync();
-    Task AddAsync(AppSettingDto setting);
+    void Add(AppSettingDto setting);
     Task UpdateAsync(AppSettingDto setting);
 }
 

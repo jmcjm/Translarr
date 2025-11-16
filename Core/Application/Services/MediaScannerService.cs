@@ -8,6 +8,7 @@ namespace Translarr.Core.Application.Services;
 
 public class MediaScannerService(
     ISubtitleEntryRepository repository,
+    IUnitOfWork unitOfWork,
     ISettingsService settingsService,
     ISeriesWatchService seriesWatchService,
     ILogger<MediaScannerService> logger,
@@ -15,6 +16,7 @@ public class MediaScannerService(
 {
     private readonly string _mediaRootPath = configuration.GetValue<string>("MediaRootPath") ?? throw new ArgumentException("MediaRootPath configuration not found");
     private readonly string[] _videoExtensions = [".mkv", ".mp4", ".avi", ".mov", ".m4v", ".webm", ".flv"];
+    private const int BatchSize = 50; // Save every 50 files
 
     public async Task<ScanResultDto> ScanLibraryAsync()
     {
@@ -113,6 +115,8 @@ public class MediaScannerService(
     private async Task AnalyzeVideoFilesAsync(List<VideoFile> videoFiles, string preferredLang, ScanResultDto result, List<string> errors)
     {
         logger.LogInformation("Analyzing video files");
+        var processedCount = 0;
+
         foreach (var videoFile in videoFiles)
         {
             try
@@ -143,7 +147,7 @@ public class MediaScannerService(
                         LastScanned = DateTime.UtcNow
                     };
 
-                    await repository.AddAsync(newEntry);
+                    repository.Add(newEntry);
                     result.NewFiles++;
                 }
                 else
@@ -152,16 +156,25 @@ public class MediaScannerService(
                     var hadSubtitles = existingEntry.AlreadyHad;
                     existingEntry.AlreadyHad = alreadyHas;
                     existingEntry.LastScanned = DateTime.UtcNow;
-                    
+
                     // If subtitles disappeared, reset processing status
                     if (hadSubtitles && !alreadyHas)
                     {
                         existingEntry.IsProcessed = false;
                         existingEntry.ErrorMessage = null;
                     }
-                    
+
                     await repository.UpdateAsync(existingEntry);
                     result.UpdatedFiles++;
+                }
+
+                processedCount++;
+
+                // Batch save every BatchSize files
+                if (processedCount % BatchSize == 0)
+                {
+                    await unitOfWork.SaveChangesAsync();
+                    logger.LogInformation("Saved batch of {count} files", BatchSize);
                 }
             }
             catch (Exception ex)
@@ -170,6 +183,13 @@ public class MediaScannerService(
                 errors.Add($"Error processing {videoFile.FileName}: {ex.Message}");
                 result.ErrorFiles++;
             }
+        }
+
+        // Save remaining files (if processedCount % BatchSize != 0)
+        if (processedCount % BatchSize != 0)
+        {
+            await unitOfWork.SaveChangesAsync();
+            logger.LogInformation("Saved final batch of {count} files", processedCount % BatchSize);
         }
     }
 
@@ -195,6 +215,7 @@ public class MediaScannerService(
                 return;
 
             var removedCount = await repository.DeleteByIdsAsync(entriesToRemove.Select(e => e.Id));
+            await unitOfWork.SaveChangesAsync();
             result.RemovedFiles += removedCount;
 
             if (removedCount < entriesToRemove.Count)

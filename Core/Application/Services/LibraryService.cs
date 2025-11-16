@@ -5,7 +5,7 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
 
-public class LibraryService(ISubtitleEntryRepository repository) : ILibraryService
+public class LibraryService(ISubtitleEntryRepository repository, IUnitOfWork unitOfWork) : ILibraryService
 {
     /// <inheritdoc />
     public async Task<ErrorOr<SubtitleEntryDto>> GetEntryById(int id)
@@ -27,9 +27,10 @@ public class LibraryService(ISubtitleEntryRepository repository) : ILibraryServi
             return entryResult.Errors;
 
         entryResult.Value.IsWanted = wantedStatus;
-        
+
         await repository.UpdateAsync(entryResult.Value);
-        
+        await unitOfWork.SaveChangesAsync();
+
         return entryResult.Value;
     }
 
@@ -42,9 +43,10 @@ public class LibraryService(ISubtitleEntryRepository repository) : ILibraryServi
             return entryResult.Errors;
 
         entryResult.Value.ForceProcess = forceProcess;
-        
+
         await repository.UpdateAsync(entryResult.Value);
-        
+        await unitOfWork.SaveChangesAsync();
+
         return entryResult.Value;
     }
 

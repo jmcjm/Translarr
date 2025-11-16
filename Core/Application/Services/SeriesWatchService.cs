@@ -7,7 +7,8 @@ namespace Translarr.Core.Application.Services;
 
 public class SeriesWatchService(
     ISeriesWatchConfigRepository watchConfigRepository,
-    ISubtitleEntryRepository subtitleEntryRepository) : ISeriesWatchService
+    ISubtitleEntryRepository subtitleEntryRepository,
+    IUnitOfWork unitOfWork) : ISeriesWatchService
 {
     /// <inheritdoc />
     public async Task<ErrorOr<int>> SetAutoWatchAsync(string seriesName, string? seasonName, bool autoWatch)
@@ -27,7 +28,9 @@ public class SeriesWatchService(
             if (addResult.IsError)
                 return addResult.Errors;
 
-            // Bulk mark existing files as wanted
+            await unitOfWork.SaveChangesAsync();
+
+            // Bulk mark existing files as wanted (ExecuteUpdateAsync saves automatically)
             var updatedCount = await subtitleEntryRepository.BulkUpdateWantedAsync(seriesName, seasonName, true);
             return updatedCount;
         }
@@ -35,6 +38,9 @@ public class SeriesWatchService(
         {
             // Disable watch: remove config (don't touch IsWanted on existing files)
             var deleted = await watchConfigRepository.DeleteAsync(seriesName, seasonName);
+            if (deleted)
+                await unitOfWork.SaveChangesAsync();
+
             return deleted ? 0 : Error.NotFound("SeriesWatchService.SetAutoWatchAsync",
                 $"Watch configuration not found for series '{seriesName}'" +
                 (seasonName != null ? $" season '{seasonName}'" : ""));
@@ -45,6 +51,9 @@ public class SeriesWatchService(
     public async Task<ErrorOr<bool>> RemoveAutoWatchAsync(string seriesName, string? seasonName)
     {
         var deleted = await watchConfigRepository.DeleteAsync(seriesName, seasonName);
+        if (deleted)
+            await unitOfWork.SaveChangesAsync();
+
         return deleted;
     }
 

@@ -25,18 +25,17 @@ public class AppSettingsRepository(TranslarrDbContext context) : IAppSettingsRep
         return settings.Select(MapToDto).ToList();
     }
 
-    public async Task AddAsync(AppSettingDto setting)
+    public void Add(AppSettingDto setting)
     {
         var dao = MapToDao(setting);
         context.AppSettings.Add(dao);
-        await context.SaveChangesAsync();
         setting.Id = dao.Id;
     }
 
     public async Task UpdateAsync(AppSettingDto setting)
     {
         var dao = await context.AppSettings.FindAsync(setting.Id);
-        
+
         if (dao == null)
         {
             throw new InvalidOperationException($"AppSetting with Id {setting.Id} not found");
@@ -46,8 +45,6 @@ public class AppSettingsRepository(TranslarrDbContext context) : IAppSettingsRep
         dao.Value = setting.Value;
         dao.Description = setting.Description;
         dao.UpdatedAt = setting.UpdatedAt;
-
-        await context.SaveChangesAsync();
     }
 
     private static AppSettingDto MapToDto(AppSettingsDao dao)

@@ -56,7 +56,7 @@ public class SeriesWatchConfigRepository(TranslarrDbContext context) : ISeriesWa
         if (existing != null)
         {
             return Error.Conflict(
-                "SeriesWatchConfigRepository.AddAsync",
+                "SeriesWatchConfigRepository.Add",
                 $"Watch configuration already exists for series '{config.SeriesName}'" +
                 (config.SeasonName != null ? $" season '{config.SeasonName}'" : ""));
         }
@@ -65,7 +65,6 @@ public class SeriesWatchConfigRepository(TranslarrDbContext context) : ISeriesWa
         dao.CreatedAt = DateTime.UtcNow;
 
         context.SeriesWatchConfigs.Add(dao);
-        await context.SaveChangesAsync();
 
         config.Id = dao.Id;
         config.CreatedAt = dao.CreatedAt;
@@ -83,7 +82,6 @@ public class SeriesWatchConfigRepository(TranslarrDbContext context) : ISeriesWa
             return false;
 
         context.SeriesWatchConfigs.Remove(config);
-        await context.SaveChangesAsync();
 
         return true;
     }

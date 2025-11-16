@@ -32,11 +32,10 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
-    public async Task AddAsync(SubtitleEntryDto entry)
+    public void Add(SubtitleEntryDto entry)
     {
         var dao = MapToDao(entry);
         context.SubtitleEntries.Add(dao);
-        await context.SaveChangesAsync();
         entry.Id = dao.Id;
     }
 
@@ -45,7 +44,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     {
         var dao = await context.SubtitleEntries
             .FirstOrDefaultAsync(x => x.Id == entry.Id);
-        
+
         if (dao == null)
         {
             throw new InvalidOperationException($"SubtitleEntry with Id {entry.Id} not found");
@@ -62,7 +61,6 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         dao.ProcessedAt = entry.ProcessedAt;
         dao.ErrorMessage = entry.ErrorMessage;
 
-        await context.SaveChangesAsync();
         return MapToDto(dao);
     }
 
@@ -166,7 +164,6 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             return 0;
 
         context.SubtitleEntries.RemoveRange(entries);
-        await context.SaveChangesAsync();
 
         return entries.Count;
     }

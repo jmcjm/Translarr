@@ -4,7 +4,7 @@ using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
 
-public class ApiUsageService(IApiUsageRepository repository, ISettingsService settingsService) : IApiUsageService
+public class ApiUsageService(IApiUsageRepository repository, IUnitOfWork unitOfWork, ISettingsService settingsService) : IApiUsageService
 {
     public async Task<bool> CanMakeRequestAsync(string model)
     {
@@ -19,7 +19,8 @@ public class ApiUsageService(IApiUsageRepository repository, ISettingsService se
 
     public async Task RecordUsageAsync(ApiUsageDto usage)
     {
-        await repository.AddAsync(usage);
+        repository.Add(usage);
+        await unitOfWork.SaveChangesAsync();
     }
 
     public async Task<List<ApiUsageDto>> GetUsageStatsAsync(DateTime from, DateTime to, string? model = null)
