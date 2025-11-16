@@ -5,12 +5,19 @@ namespace Translarr.Frontend.HavitWebApp.Services;
 
 public class LibraryApiService(IHttpClientFactory httpClientFactory)
 {
-    public async Task<ScanResultDto?> ScanLibraryAsync()
+    public async Task<bool> StartScanAsync()
     {
         var client = httpClientFactory.CreateClient("TranslarrApi");
         var response = await client.PostAsync("/api/library/scan", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<ScanStatus?> GetScanStatusAsync()
+    {
+        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var response = await client.GetAsync("/api/library/scan/status");
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ScanResultDto>();
+        return await response.Content.ReadFromJsonAsync<ScanStatus>();
     }
 
     public async Task<PagedResult<SubtitleEntryDto>?> GetEntriesAsync(

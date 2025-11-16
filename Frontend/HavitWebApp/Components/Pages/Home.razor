@@ -85,6 +85,28 @@
         </div>
     </div>
 
+    <!-- Scan Progress Card -->
+    @if (_scanStatus is { IsRunning: true })
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <HxCard CssClass="border-primary">
+                    <HeaderTemplate>
+                        <h5 class="mb-0">Library Scan Progress</h5>
+                    </HeaderTemplate>
+                    <BodyTemplate>
+                        <p class="mb-2">@_scanStatus.Progress</p>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar"
+                                 style="width: 100%"></div>
+                        </div>
+                    </BodyTemplate>
+                </HxCard>
+            </div>
+        </div>
+    }
+
     <!-- Translation Progress Card -->
     @if (_translationStatus is { IsRunning: true })
     {
@@ -120,6 +142,7 @@
 @code {
     private LibraryStats? _stats;
     private TranslationStatus? _translationStatus;
+    private ScanStatus? _scanStatus;
     private bool _isLoading = true;
     private bool _isScanning;
     private bool _isTranslating;
@@ -129,11 +152,16 @@
     {
         await LoadStats();
         await CheckTranslationStatus();
+        await CheckScanStatus();
 
-        // Start polling for translation status
+        // Start polling for translation and scan status
         _statusTimer = new Timer(_ =>
         {
-            InvokeAsync(async () => await CheckTranslationStatus()).GetAwaiter().GetResult();
+            InvokeAsync(async () =>
+            {
+                await CheckTranslationStatus();
+                await CheckScanStatus();
+            }).GetAwaiter().GetResult();
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
     }
 
@@ -159,17 +187,20 @@
         try
         {
             _isScanning = true;
-            var result = await LibraryService.ScanLibraryAsync();
+            var success = await LibraryService.StartScanAsync();
 
-            if (result != null)
+            if (success)
             {
-                Messenger.AddInformation($"Scan completed: {result.NewFiles} new, {result.UpdatedFiles} updated, {result.RemovedFiles} removed");
-                await LoadStats();
+                Messenger.AddInformation("Library scan started");
+            }
+            else
+            {
+                Messenger.AddError("Failed to start scan");
             }
         }
         catch (Exception ex)
         {
-            Messenger.AddError($"Error scanning library: {ex.Message}");
+            Messenger.AddError($"Error starting scan: {ex.Message}");
         }
         finally
         {
@@ -212,6 +243,26 @@
             if (_translationStatus is { IsRunning: false, Result: not null })
             {
                 // Translation just finished
+                await LoadStats();
+            }
+
+            StateHasChanged();
+        }
+        catch
+        {
+            // Ignore errors during polling
+        }
+    }
+
+    private async Task CheckScanStatus()
+    {
+        try
+        {
+            _scanStatus = await LibraryService.GetScanStatusAsync();
+
+            if (_scanStatus is { IsRunning: false, Result: not null })
+            {
+                // Scan just finished
                 await LoadStats();
             }
 

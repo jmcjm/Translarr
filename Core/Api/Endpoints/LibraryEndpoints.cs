@@ -8,12 +8,20 @@ namespace Translarr.Core.Api.Endpoints;
 
 public static class LibraryEndpoints
 {
+    private static ScanStatus? _currentScanStatus;
+    private static readonly Lock ScanLock = new();
+
     public static RouteGroupBuilder MapLibraryEndpoints(this RouteGroupBuilder group)
     {
         group.MapPost("/scan", ScanLibrary)
             .WithName("ScanLibrary")
             .Produces<ScanResultDto>()
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapGet("/scan/status", GetScanStatus)
+            .WithName("GetScanStatus")
+            .Produces<ScanStatus>();
 
         group.MapGet("/entries", GetEntries)
             .WithName("GetEntries")
@@ -42,10 +50,82 @@ public static class LibraryEndpoints
         return group;
     }
 
-    private static async Task<IResult> ScanLibrary([FromServices] IMediaScannerService scannerService)
+    private static IResult ScanLibrary(IServiceScopeFactory serviceScopeFactory)
     {
-        var result = await scannerService.ScanLibraryAsync();
-        return Results.Ok(result);
+        // Check if scan is already running
+        lock (ScanLock)
+        {
+            if (_currentScanStatus?.IsRunning == true)
+            {
+                return Results.Conflict(new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Library scan already in progress",
+                    Detail = "A library scan is already running. Please wait for it to complete."
+                });
+            }
+
+            _currentScanStatus = new ScanStatus
+            {
+                IsRunning = true,
+                StartedAt = DateTime.UtcNow,
+                Progress = "Starting library scan..."
+            };
+        }
+
+        // Start scan asynchronously with its own scope
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Create new scope for background task
+                using var scope = serviceScopeFactory.CreateScope();
+                var scannerService = scope.ServiceProvider.GetRequiredService<IMediaScannerService>();
+
+                var result = await scannerService.ScanLibraryAsync();
+
+                lock (ScanLock)
+                {
+                    _currentScanStatus = new ScanStatus
+                    {
+                        IsRunning = false,
+                        StartedAt = _currentScanStatus.StartedAt,
+                        CompletedAt = DateTime.UtcNow,
+                        Progress = "Completed",
+                        Result = result
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                lock (ScanLock)
+                {
+                    _currentScanStatus = new ScanStatus
+                    {
+                        IsRunning = false,
+                        StartedAt = _currentScanStatus?.StartedAt ?? DateTime.UtcNow,
+                        CompletedAt = DateTime.UtcNow,
+                        Progress = $"Failed: {ex.Message}",
+                        Error = ex.Message,
+                        Result = new ScanResultDto
+                        {
+                            NewFiles = 0,
+                            UpdatedFiles = 0,
+                            RemovedFiles = 0,
+                            ErrorFiles = 0,
+                            Duration = TimeSpan.Zero,
+                            Errors = [$"Critical error during scan: {ex.Message}"]
+                        }
+                    };
+                }
+            }
+        });
+
+        return Results.Accepted("/api/library/scan/status", new
+        {
+            Message = "Library scan started",
+            StatusUrl = "/api/library/scan/status"
+        });
     }
 
     private static async Task<IResult> GetEntries(
@@ -109,5 +189,22 @@ public static class LibraryEndpoints
             return ErrorTypeMapper.MapErrorsToProblemResponse(result);
 
         return Results.Ok(new BulkUpdateResult(result.Value));
+    }
+
+    private static IResult GetScanStatus()
+    {
+        lock (ScanLock)
+        {
+            if (_currentScanStatus is null)
+            {
+                return Results.Ok(new ScanStatus
+                {
+                    IsRunning = false,
+                    Progress = "No scan running"
+                });
+            }
+
+            return Results.Ok(_currentScanStatus);
+        }
     }
 }
