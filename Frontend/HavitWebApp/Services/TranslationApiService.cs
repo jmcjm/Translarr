@@ -1,7 +1,6 @@
-using System.Net.Http.Json;
 using Translarr.Core.Api.Models;
 
-namespace Translarr.Frontend.Shared.Services;
+namespace Translarr.Frontend.HavitWebApp.Services;
 
 public class TranslationApiService(IHttpClientFactory httpClientFactory)
 {

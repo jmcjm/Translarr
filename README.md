@@ -21,11 +21,7 @@
 ## 🛠️ Technology Stack
 
 *   **Backend:** .NET 10, ASP.NET Core, Entity Framework Core
-*   **Frontend:** Blazor Server
-*   **UI Frameworks:** The project includes three separate frontend implementations:
-    *   **Havit:** A feature-rich and robust component library.
-    *   **MudBlazor:** A popular Material Design component library.
-    *   **Radzen:** Another comprehensive set of Blazor components.
+*   **Frontend:** Blazor Server with **Havit**
 *   **Database:** SQLite (via ```CommunityToolkit.Aspire.Hosting.SQLite``` and EFCore)
 *   **AI Engine:** Google Gemini API (via ```Mscc.GenerativeAI``` nuget)
 *   **Media Processing:** FFmpeg (via ```FFMpegCore``` nuget)
@@ -37,7 +33,7 @@ The project is built using .NET Aspire, following a distributed application mode
 
 *   **`AppHost`**: The Aspire project that orchestrates the different services.
 *   **`Translarr.Core.Api`**: The backend REST API service handling all core logic (scanning, translation, database operations).
-*   **`Translarr.Frondend.HavitWebApp` / `Translarr.Frondend.MudBlazorWebApp` / `Translarr.Frondend.RadzenWebApp`**: The Blazor Server frontends for the user interface.
+*   **`Translarr.Frondend.HavitWebApp`**: The Blazor Server frontend for the user interface.
 *   **`ServiceDefaults`**: A shared project for common configurations like health checks, resilience, and OpenTelemetry.
 
 The backend itself follows Clean Architecture principles, separating concerns into `Application`, `Infrastructure`, and `Api` layers.
@@ -66,7 +62,6 @@ The backend itself follows Clean Architecture principles, separating concerns in
     API_PORT=5000
     WEB_PORT=5001
     ```
-    **Note:** The default `compose.yaml` launches the **MudBlazor** frontend. To use the Havit or Radzen frontends, you will need to modify the `compose.yaml` file or run the project locally using the .NET Aspire `AppHost`.
 
 3.  **Launch the application:**
     ```sh
@@ -95,7 +90,7 @@ For detailed Docker setup instructions, troubleshooting, and backup procedures, 
 3.  **Translate:** Return to the **Dashboard** and click **Start Translation**. Translarr will begin processing the "wanted" files in the queue.
 4.  **Monitor:** You can see the real-time translation progress on the Dashboard. Once completed, the new `.srt` subtitle file (e.g., `My.Episode.S01E01.pl.srt`) will be saved in the same directory as its video file.
 
-## 📸 Screenshots (Havit UI)
+## 📸 Screenshots
 
 [![Translarr Dashboard Screenshot](./.github/assets/DashboardHavit.png)](./.github/assets/DashboardHavit.png)
 

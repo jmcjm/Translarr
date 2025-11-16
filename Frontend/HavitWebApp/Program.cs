@@ -1,7 +1,6 @@
 using Havit.Blazor.Components.Web;
 using Translarr.Frontend.HavitWebApp.Components;
 using Translarr.Frontend.HavitWebApp.Services;
-using Translarr.Frontend.Shared.Services;
 using Translarr.ServiceDefaults;
 
 namespace Translarr.Frontend.HavitWebApp;

@@ -134,26 +134,43 @@ public partial class SubtitleTranslationService(
 
         try
         {
+            // Not only is the overall token limit a problem for us, but the output token limit is also an issue, as it maxes out at 65,536.
+            // Earlier I set the max input limit based on ASS subtitles, which contained a lot of junk that wasn’t present in the translated subtitles,
+            // so the input token count could be much higher than the max output limit.
+            // But when translating pure SRT subtitles, if the input token count was higher than the max output limit, Gemini truncated the output once it reached 65,536 tokens (including thinking tokens).
+            // So we need to set the max input slightly lower than the max output and split the input into multiple requests if necessary.
+            // This will use more API calls (we only have 100 per day on the free tier), but it's still better than ending up with truncated subtitles ;).
+            
+            // The problem is that we need to split the subtitles into sensible chunks, not in the middle of a subtitle line.
+            // We also need to include a few previous lines in the next request, so Gemini has context for the translation,
+            // and afterward we need to merge all chunks back together.
+            // Maybe we could instead send Gemini the entire conversation history and ask it to continue from the last line,
+            // but this is still a WIP.
+            var maxSizeBytes = 59000;
+            
             // 5. Clean ASS files if needed
             if (codecName.Equals("ass", StringComparison.OrdinalIgnoreCase) ||
                 codecName.Equals("ssa", StringComparison.OrdinalIgnoreCase))
             {
                 ReportProgress(TranslationStep.CleaningSubtitles);
                 logger.LogInformation("Detected ASS/SSA subtitle format, cleaning file before conversion");
-                await ffmpegService.CleanAssFile(extractedSubtitlePath);
+                await CleanAssFile(extractedSubtitlePath);
+                
+                // We still don’t have a good way to translate long subtitle files without risking truncation. However,
+                // we know that if the subtitles are in ASS/SSA format, we can safely allow a higher input size
+                // because ASS/SSA subtitles convert to much shorter SRT text.
+                logger.LogInformation("Detected ASS/SSA subtitle format, increasing the input token limit as they will be much smaller after conversion to SRT by the model");
+                maxSizeBytes = 100000;
             }
 
             // 6. Read subtitles and validate size
             ReportProgress(TranslationStep.ValidatingSize);
             var subtitleContent = await File.ReadAllTextAsync(extractedSubtitlePath);
-
-            // Size validation - Gemini free tier has token limits
-            // TODO - make it configurable
-            const int maxSizeBytes = 100 * 2548;
+            
             if (subtitleContent.Length > maxSizeBytes)
             {
                 throw new InvalidOperationException(
-                    $"Subtitle file too large after cleaning: {subtitleContent.Length} bytes (max: {maxSizeBytes} bytes). " +
+                    $"Subtitle file too large: {subtitleContent.Length} bytes (max: {maxSizeBytes} bytes). " +
                     "This file cannot be processed with the current Gemini API limits.");
             }
 
@@ -207,6 +224,103 @@ public partial class SubtitleTranslationService(
                 CurrentFileName: entry.FileName,
                 CurrentStep: step
             ));
+        }
+    }
+    
+    private async Task CleanAssFile(string assFilePath)
+    {
+        try
+        {
+            logger.LogInformation("Cleaning ASS file: {file}", assFilePath);
+
+            var content = await File.ReadAllTextAsync(assFilePath);
+            var lines = content.Split('\n');
+            var cleanedLines = new List<string>();
+            var currentSection = "";
+            var skipSection = false;
+
+            var sectionsToRemove = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "[V4+ Styles]",
+                "[V4 Styles]",
+                "[Aegisub Project Garbage]",
+                "[Aegisub Extradata]",
+                "[Fonts]",
+                "[Graphics]"
+            };
+
+            var styleBlacklist = new[] { "ED", "OP", "Romaji", "Kanji", "FX", "fx", "KFX", "karaoke" };
+
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+
+                if (trimmedLine.StartsWith('[') && trimmedLine.EndsWith(']'))
+                {
+                    currentSection = trimmedLine;
+                    skipSection = sectionsToRemove.Contains(currentSection);
+
+                    if (!skipSection)
+                        cleanedLines.Add(line);
+
+                    continue;
+                }
+
+                if (skipSection)
+                    continue;
+
+                if (currentSection.Equals("[Events]", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (trimmedLine.StartsWith("Dialogue:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Usuń tagi formatujące
+                        var cleanedLine = Regex.Replace(line, @"\{[^}]+\}", string.Empty);
+
+                        // Rozbij po przecinkach (ASS ma 9 pól przed tekstem)
+                        var parts = cleanedLine.Split(',', 10);
+                        if (parts.Length < 10)
+                            continue;
+
+                        var style = parts[3].Trim();
+                        var effect = parts[8].Trim();
+                        var text = parts[9].Trim();
+
+                        // Pomijaj linie z niechcianymi stylami lub efektami
+                        if (styleBlacklist.Any(bad => style.Contains(bad, StringComparison.OrdinalIgnoreCase)) ||
+                            styleBlacklist.Any(bad => effect.Contains(bad, StringComparison.OrdinalIgnoreCase)))
+                            continue;
+
+                        // Pomijaj linie bez liter (czyli krzaki typu "fx,s" albo puste)
+                        if (!Regex.IsMatch(text, @"\p{L}"))
+                            continue;
+
+                        cleanedLines.Add(cleanedLine);
+                        continue;
+                    }
+
+                    if (trimmedLine.StartsWith("Comment:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Pomijamy komentarze
+                        continue;
+                    }
+                }
+
+                cleanedLines.Add(line);
+            }
+
+            var cleanedContent = string.Join('\n', cleanedLines);
+            await File.WriteAllTextAsync(assFilePath, cleanedContent);
+
+            var originalSize = content.Length;
+            var cleanedSize = cleanedContent.Length;
+            var reduction = originalSize > 0 ? (1 - (double)cleanedSize / originalSize) * 100 : 0;
+
+            logger.LogInformation("ASS file cleaned. Size reduced from {original}B to {cleaned}B ({reduction:F1}% reduction)", originalSize, cleanedSize, reduction);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error cleaning ASS file: {ex}", ex.Message);
+            throw;
         }
     }
 

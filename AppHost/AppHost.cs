@@ -18,19 +18,7 @@ var api = builder.AddProject<Projects.Api>("Translarr-Api")
     // .WithHealthCheck("/health")
     .WithEnvironment("MediaRootPath", mediaRootPathOnHost);
 
-builder.AddProject<Projects.MudBlazorWebApp>("Translarr-MudBlazor-Web")
-    .WaitFor(api)
-    .WithReference(api)
-    // .WithHealthCheck("/health")
-    .WithExternalHttpEndpoints();
-
 builder.AddProject<Projects.HavitWebApp>("Translarr-Havit-Web")
-    .WaitFor(api)
-    .WithReference(api)
-    // .WithHealthCheck("/health")
-    .WithExternalHttpEndpoints();
-
-builder.AddProject<Projects.RadzenWebApp>("Translarr-Radzen-Web")
     .WaitFor(api)
     .WithReference(api)
     // .WithHealthCheck("/health")
