@@ -5,10 +5,7 @@
     <Project Path="Core/Infrastructure/Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Frontend/">
-    <Project Path="Frontend/Shared/Shared.csproj" />
     <Project Path="Frontend/HavitWebApp/HavitWebApp.csproj" />
-    <Project Path="Frontend/RadzenWebApp/RadzenWebApp.csproj" />
-    <Project Path="Frontend\MudBlazorWebApp\MudBlazorWebApp.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="compose.yaml" />
