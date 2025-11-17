@@ -30,9 +30,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 5. Publish API
-      - name: Publish Core/Api
-        run: cd Core/Api && dotnet publish /t:PublishContainer
+      # 5. Build and push API container
+      - name: Build and push Core/Api
+        run: |
+          docker build -f Core/Api/Dockerfile -t docker.io/jmcjm/translarr-api:nightly .
+          docker push docker.io/jmcjm/translarr-api:nightly
 
       # 6. Publish HavitWebApp
       - name: Publish Frontend/HavitWebApp

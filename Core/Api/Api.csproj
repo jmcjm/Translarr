@@ -8,11 +8,7 @@
         <InformationalVersion>$(AssemblyVersion)</InformationalVersion>
         <BuildStamp>$([System.DateTime]::UtcNow.ToString("ddMMyy.HHmm"))</BuildStamp>
         <Version>$(MajorVersion).$(BuildStamp)</Version>
-        
-        <ContainerRegistry>docker.io</ContainerRegistry>
-        <ContainerRepository>jmcjm/Translarr-Api</ContainerRepository>
-        <ContainerImageTags>nightly</ContainerImageTags>
-        <ContainerDockerfile>Dockerfile</ContainerDockerfile>
+
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
