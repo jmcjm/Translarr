@@ -1,5 +1,9 @@
-# Translarr
+<h1>
+  <img src="./.github/assets/logo_translarr.png" alt="Translarr Logo" height="60">
+  Translarr
+</h1>
 
+--------------------
 [![.NET](https://img.shields.io/badge/.NET-10-blueviolet.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
