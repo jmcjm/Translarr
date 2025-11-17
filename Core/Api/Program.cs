@@ -58,17 +58,17 @@ public static class Program
         app.MapDefaultEndpoints();
 
         // Configure the HTTP request pipeline
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI(
-                Theme.UniversalDark,
-                setupAction: c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Translarr API v1");
-                    c.RoutePrefix = "swagger";
-                });
-        }
+        // if (app.Environment.IsDevelopment())
+        // {
+        app.UseSwagger();
+        app.UseSwaggerUI(
+            Theme.UniversalDark,
+            setupAction: c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Translarr API v1");
+                c.RoutePrefix = "swagger";
+            });
+        // }
 
         // Use exception handler
         app.UseExceptionHandler();

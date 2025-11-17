@@ -12,7 +12,8 @@
         <ContainerRegistry>docker.io</ContainerRegistry>
         <ContainerRepository>jmcjm/Translarr-Api</ContainerRepository>
         <ContainerImageTags>nightly</ContainerImageTags>
-        <ContainerFamily>alpine</ContainerFamily>
+        <ContainerDockerfile>Dockerfile</ContainerDockerfile>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
     
@@ -32,6 +33,12 @@
       <ProjectReference Include="..\..\ServiceDefaults\ServiceDefaults.csproj" />
       <ProjectReference Include="..\Application\Application.csproj" />
       <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
