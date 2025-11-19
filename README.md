@@ -3,9 +3,15 @@
   Translarr
 </h1>
 
---------------------
 [![.NET](https://img.shields.io/badge/.NET-10-blueviolet.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Build & Publish](https://img.shields.io/github/actions/workflow/status/jmcjm/Translarr/publish.yml?branch=main&label=Build%20%26%20Publish)](https://github.com/jmcjm/Translarr/actions)
+[![GitHub last commit](https://img.shields.io/github/last-commit/jmcjm/Translarr)](https://github.com/jmcjm/Translarr/commits/main)
+[![GitHub issues](https://img.shields.io/github/issues/jmcjm/Translarr)](https://github.com/jmcjm/Translarr/issues)
+
+![Blazor](https://img.shields.io/badge/Blazor-512BD4?style=flat&logo=blazor&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=flat&logo=google&logoColor=white)
 
 **Translarr is a self-hosted application designed to automate the process of translating subtitles for your media library.** Inspired by the *arr suite of tools, Translarr scans your video files, identifies those missing subtitles in your preferred language, and uses the power of Google's Gemini AI to generate and save new, translated subtitle files.
 
@@ -37,12 +43,12 @@ The project is built using .NET Aspire, following a distributed application mode
 
 *   **`AppHost`**: The Aspire project that orchestrates the different services.
 *   **`Translarr.Core.Api`**: The backend REST API service handling all core logic (scanning, translation, database operations).
-*   **`Translarr.Frondend.HavitWebApp`**: The Blazor Server frontend for the user interface.
+*   **`Translarr.Frontend.HavitWebApp`**: The Blazor Server frontend for the user interface.
 *   **`ServiceDefaults`**: A shared project for common configurations like health checks, resilience, and OpenTelemetry.
 
 The backend itself follows Clean Architecture principles, separating concerns into `Application`, `Infrastructure`, and `Api` layers.
 
-## 🚀 Getting Started - still WIP!
+## 🚀 Getting Started (BETA)
 
 ### Docker Compose
 **Prerequisites:**
