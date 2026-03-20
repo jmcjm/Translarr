@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Mscc.GenerativeAI;
+using Mscc.GenerativeAI.Types;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
 
