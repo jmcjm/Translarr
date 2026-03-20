@@ -73,12 +73,24 @@
                             Scan Library
                         </HxButton>
 
-                        <HxButton Color="ThemeColor.Secondary"
-                                  OnClick="StartTranslation"
-                                  Enabled="!_isTranslating && _stats.WantedFiles > 0">
-                            <i class="bi bi-translate me-2"></i>
-                            Start Translation
-                        </HxButton>
+                        @if (_translationStatus is { IsRunning: true })
+                        {
+                            <HxButton Color="ThemeColor.Danger"
+                                      OnClick="CancelTranslation"
+                                      Enabled="!_isCancelling">
+                                <i class="bi bi-stop-circle me-2"></i>
+                                Stop Translation
+                            </HxButton>
+                        }
+                        else
+                        {
+                            <HxButton Color="ThemeColor.Secondary"
+                                      OnClick="StartTranslation"
+                                      Enabled="!_isTranslating && _stats.WantedFiles > 0">
+                                <i class="bi bi-translate me-2"></i>
+                                Start Translation
+                            </HxButton>
+                        }
                     </div>
                 </BodyTemplate>
             </HxCard>
@@ -146,6 +158,7 @@
     private bool _isLoading = true;
     private bool _isScanning;
     private bool _isTranslating;
+    private bool _isCancelling;
     private Timer? _statusTimer;
 
     protected override async Task OnInitializedAsync()
@@ -231,6 +244,32 @@
         finally
         {
             _isTranslating = false;
+        }
+    }
+
+    private async Task CancelTranslation()
+    {
+        try
+        {
+            _isCancelling = true;
+            var success = await TranslationService.CancelTranslationAsync();
+
+            if (success)
+            {
+                Messenger.AddInformation("Translation cancellation requested");
+            }
+            else
+            {
+                Messenger.AddError("Failed to cancel translation");
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error cancelling translation: {ex.Message}");
+        }
+        finally
+        {
+            _isCancelling = false;
         }
     }
 

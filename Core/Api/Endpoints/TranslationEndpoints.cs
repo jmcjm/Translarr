@@ -9,6 +9,7 @@ public static class TranslationEndpoints
 {
     private static TranslationStatus? _currentStatus;
     private static readonly Lock StatusLock = new();
+    private static CancellationTokenSource? _cancellationTokenSource;
 
     public static RouteGroupBuilder MapTranslationEndpoints(this RouteGroupBuilder group)
     {
@@ -17,6 +18,11 @@ public static class TranslationEndpoints
             .Produces<TranslationResultDto>()
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/cancel", CancelTranslation)
+            .WithName("CancelTranslation")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
 
         group.MapGet("/status", GetTranslationStatus)
             .WithName("GetTranslationStatus")
@@ -42,6 +48,9 @@ public static class TranslationEndpoints
                 });
             }
 
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = new CancellationTokenSource();
+
             _currentStatus = new TranslationStatus
             {
                 IsRunning = true,
@@ -49,6 +58,8 @@ public static class TranslationEndpoints
                 Progress = "Starting translation..."
             };
         }
+
+        var cts = _cancellationTokenSource;
 
         // Start translation asynchronously with its own scope
         _ = Task.Run(async () =>
@@ -75,7 +86,9 @@ public static class TranslationEndpoints
                     }
                 }
 
-                var result = await translationService.TranslateNextBatchAsync(batchSize, OnProgressUpdate);
+                var result = await translationService.TranslateNextBatchAsync(batchSize, OnProgressUpdate, cts.Token);
+
+                var wasCancelled = cts.IsCancellationRequested;
 
                 lock (StatusLock)
                 {
@@ -84,10 +97,10 @@ public static class TranslationEndpoints
                         IsRunning = false,
                         StartedAt = _currentStatus.StartedAt,
                         CompletedAt = DateTime.UtcNow,
-                        Progress = "Completed",
+                        Progress = wasCancelled ? "Cancelled" : "Completed",
                         CurrentStep = TranslationStep.Completed,
                         TotalFiles = _currentStatus.TotalFiles,
-                        ProcessedFiles = _currentStatus.TotalFiles,
+                        ProcessedFiles = _currentStatus.ProcessedFiles,
                         Result = result
                     };
                 }
@@ -121,6 +134,27 @@ public static class TranslationEndpoints
             Message = "Translation started",
             StatusUrl = "/api/translation/status"
         });
+    }
+
+    private static IResult CancelTranslation()
+    {
+        lock (StatusLock)
+        {
+            if (_currentStatus?.IsRunning != true)
+            {
+                return Results.NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "No translation in progress",
+                    Detail = "There is no running translation to cancel."
+                });
+            }
+
+            _cancellationTokenSource?.Cancel();
+            _currentStatus.Progress = "Cancelling...";
+
+            return Results.Ok(new { Message = "Cancellation requested" });
+        }
     }
 
     private static IResult GetTranslationStatus()
@@ -159,4 +193,3 @@ public static class TranslationEndpoints
         return $"[{update.ProcessedFiles + 1}/{update.TotalFiles}] {stepText}: {update.CurrentFileName}";
     }
 }
-

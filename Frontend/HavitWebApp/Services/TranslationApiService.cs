@@ -11,6 +11,13 @@ public class TranslationApiService(IHttpClientFactory httpClientFactory)
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<bool> CancelTranslationAsync()
+    {
+        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var response = await client.PostAsync("/api/translation/cancel", null);
+        return response.IsSuccessStatusCode;
+    }
+
     public async Task<TranslationStatus?> GetTranslationStatusAsync()
     {
         var client = httpClientFactory.CreateClient("TranslarrApi");
