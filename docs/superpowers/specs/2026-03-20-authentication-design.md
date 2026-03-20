@@ -128,6 +128,8 @@ Restrict to Development environment only. Remove the commented-out `if (app.Envi
 
 The hardest part of this design. Blazor Server runs on the server over SignalR - `HttpContext` is only available during the initial HTTP request, not during subsequent SignalR interactions.
 
+**Key constraint:** The WebApp has NO direct access to the auth database or `UserManager`. All auth operations go through API calls. The WebApp's only auth responsibilities are: forwarding cookies, checking auth state via `/api/auth/me`, and rendering login/setup pages that POST to the API.
+
 **Approach: Circuit-scoped cookie caching**
 
 1. On initial HTTP request (circuit establishment), capture the auth cookie value from `HttpContext.Request.Cookies` and store it in a **circuit-scoped service** (`AuthCookieHolder`).
@@ -190,6 +192,13 @@ builder.Services.AddDataProtection()
 
 Both API and WebApp must share the same Data Protection keys and application name so cookies issued by the API are readable by the WebApp. Keys directory lives in the existing `translarr-db` volume.
 
+**Docker Compose:** The `translarr-web` container currently has no volume mounts. It needs the `translarr-db` volume mounted (read-only for dp-keys is sufficient):
+```yaml
+translarr-web:
+  volumes:
+    - translarr-db:/app/data:ro  # Data Protection keys only
+```
+
 ### Cookie Domain
 
 Login flow goes: Browser -> WebApp (POST) -> API (server-side) -> WebApp sets cookie in browser response. The cookie domain is the WebApp's domain (what the user sees in the browser). The API never sets cookies directly to the browser. This avoids cross-origin cookie issues entirely.
@@ -198,7 +207,7 @@ Login flow goes: Browser -> WebApp (POST) -> API (server-side) -> WebApp sets co
 
 ### CORS
 
-Lock down from `AllowAnyOrigin()`. Blazor Server communicates with API server-side, so CORS can be restricted to the internal WebApp -> API URL. In Docker, this is `http://translarr-api:8080`.
+Remove CORS entirely. Blazor Server communicates with API server-to-server, and the browser never talks to the API directly. CORS is a browser mechanism and is irrelevant for this architecture. If needed in the future (e.g., external API consumers), add specific origins then.
 
 ### Rate Limiting
 
@@ -245,7 +254,7 @@ Current `Program.cs` has Swagger enabled unconditionally (the environment check 
 
 Following existing pattern where `DependencyInjection.cs` handles all Infrastructure registration:
 
-New extension method `AddAuthentication()` in `DependencyInjection.cs` (or `AuthenticationDependencyInjection.cs`) that handles:
+New extension method in a separate `AuthDependencyInjection.cs` file in Infrastructure (keeps existing `DependencyInjection.cs` clean, auth registration is substantial enough to warrant its own file). Handles:
 - `AuthDbContext` registration with SQLite connection string
 - `AddIdentity<IdentityUser>().AddEntityFrameworkStores<AuthDbContext>()`
 - Identity options (password policy, lockout)
