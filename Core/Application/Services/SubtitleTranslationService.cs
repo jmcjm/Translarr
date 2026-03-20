@@ -20,7 +20,8 @@ public partial class SubtitleTranslationService(
 
     public async Task<TranslationResultDto> TranslateNextBatchAsync(
         int batchSize = 100,
-        Action<TranslationProgressUpdate>? onProgressUpdate = null)
+        Action<TranslationProgressUpdate>? onProgressUpdate = null,
+        CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting translation");
         var startTime = DateTime.UtcNow;
@@ -49,10 +50,23 @@ public partial class SubtitleTranslationService(
 
             foreach (var entry in entries)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogInformation("Translation cancelled by user after {count}/{total} files", processedCount, totalFiles);
+                    errors.Add("Translation was cancelled by user");
+                    break;
+                }
+
                 try
                 {
-                    await ProcessEntryAsync(entry, result, geminiSettings, processedCount, totalFiles, onProgressUpdate);
+                    await ProcessEntryAsync(entry, result, geminiSettings, processedCount, totalFiles, onProgressUpdate, cancellationToken);
                     processedCount++;
+                }
+                catch (OperationCanceledException)
+                {
+                    logger.LogInformation("Translation cancelled by user during processing of {file}", entry.FileName);
+                    errors.Add("Translation was cancelled by user");
+                    break;
                 }
                 catch (Exception ex)
                 {
@@ -64,11 +78,18 @@ public partial class SubtitleTranslationService(
                     // File will be processed again in next attempt
                     entry.ErrorMessage = ex.Message;
                     await repository.UpdateAsync(entry);
-                    await unitOfWork.SaveChangesAsync();
+                    await unitOfWork.SaveChangesAsync(cancellationToken);
                     processedCount++;
                 }
             }
 
+            result.Errors = errors;
+            result.Duration = DateTime.UtcNow - startTime;
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("Translation cancelled by user");
+            errors.Add("Translation was cancelled by user");
             result.Errors = errors;
             result.Duration = DateTime.UtcNow - startTime;
         }
@@ -90,7 +111,8 @@ public partial class SubtitleTranslationService(
         GeminiSettingsDto settings,
         int currentIndex,
         int totalFiles,
-        Action<TranslationProgressUpdate>? onProgressUpdate)
+        Action<TranslationProgressUpdate>? onProgressUpdate,
+        CancellationToken cancellationToken = default)
     {
         // 1. Check rate limit
         ReportProgress(TranslationStep.CheckingRateLimit);
@@ -101,21 +123,23 @@ public partial class SubtitleTranslationService(
 
         // 3. Find best subtitle stream
         ReportProgress(TranslationStep.FindingSubtitles);
-        var subtitleStream = await ffmpegService.FindBestSubtitleStreamAsync(entry.FilePath);
-        
-        if (subtitleStream == null)
+        var searchResult = await ffmpegService.FindBestSubtitleStreamAsync(entry.FilePath);
+
+        if (searchResult.Stream == null)
         {
             // CASE: No suitable subtitles - mark as processed
             // (this is a permanent state, no point in trying again)
-            logger.LogWarning("No suitable subtitles found for {file}, skipping", entry.FileName);
+            logger.LogWarning("No suitable subtitles found for {file}, skipping: {reason}", entry.FileName, searchResult.SkipReason);
             entry.IsProcessed = true;
             entry.ProcessedAt = DateTime.UtcNow;
-            entry.ErrorMessage = "No suitable embedded subtitles found - skipped";
+            entry.ErrorMessage = searchResult.SkipReason ?? "No suitable embedded subtitles found";
             await repository.UpdateAsync(entry);
             await unitOfWork.SaveChangesAsync();
             result.SkippedNoSubtitles++;
             return;
         }
+
+        var subtitleStream = searchResult.Stream;
 
         // 4. Extract subtitles to WorkDir
         ReportProgress(TranslationStep.ExtractingSubtitles);
@@ -179,6 +203,7 @@ public partial class SubtitleTranslationService(
 
             logger.LogInformation("Sending subtitles to Gemini API");
             // 7. Call Gemini API
+            cancellationToken.ThrowIfCancellationRequested();
             ReportProgress(TranslationStep.TranslatingWithGemini);
             var translatedContent = await geminiClient.TranslateSubtitlesAsync(subtitleContent, settings);
             logger.LogInformation("Received translated subtitles from Gemini API");
