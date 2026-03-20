@@ -115,6 +115,33 @@
                     </div>
                 </BodyTemplate>
             </HxCard>
+
+            <!-- Change Password -->
+            <HxCard CssClass="mb-4">
+                <HeaderTemplate>
+                    <h5 class="mb-0">Change Password</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="mb-3">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" class="form-control" @bind="_currentPassword" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-control" @bind="_newPassword" />
+                        <div class="form-text">Minimum 8 characters</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" @bind="_confirmNewPassword" />
+                    </div>
+                    <HxButton Color="ThemeColor.Warning"
+                              OnClick="ChangePassword"
+                              Enabled="!_isChangingPassword">
+                        Change Password
+                    </HxButton>
+                </BodyTemplate>
+            </HxCard>
         </div>
 
         <!-- Automation (Full Width) -->
@@ -194,6 +221,52 @@
     private int _rateLimitPerDay = 100;
     private bool _autoLibraryScan;
     private bool _autoTranslate;
+
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _confirmNewPassword = "";
+    private bool _isChangingPassword;
+
+    private async Task ChangePassword()
+    {
+        if (_newPassword != _confirmNewPassword)
+        {
+            Messenger.AddError("New passwords do not match");
+            return;
+        }
+
+        if (_newPassword.Length < 8)
+        {
+            Messenger.AddError("Password must be at least 8 characters");
+            return;
+        }
+
+        try
+        {
+            _isChangingPassword = true;
+            var success = await SettingsService.ChangePasswordAsync(_currentPassword, _newPassword);
+
+            if (success)
+            {
+                Messenger.AddInformation("Password changed successfully");
+                _currentPassword = "";
+                _newPassword = "";
+                _confirmNewPassword = "";
+            }
+            else
+            {
+                Messenger.AddError("Failed to change password. Check your current password.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            _isChangingPassword = false;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
