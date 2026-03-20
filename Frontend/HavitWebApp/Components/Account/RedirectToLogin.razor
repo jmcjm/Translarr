@@ -1,5 +1,6 @@
 @inject NavigationManager NavigationManager
 @inject IHttpClientFactory HttpClientFactory
+@inject ILogger<RedirectToLogin> Logger
 
 @code {
     protected override async Task OnInitializedAsync()
@@ -15,9 +16,9 @@
                 return;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // API not reachable - fall through to login
+            Logger.LogWarning(ex, "Failed to check setup status, falling through to login");
         }
 
         NavigationManager.NavigateTo("/login", forceLoad: true);
