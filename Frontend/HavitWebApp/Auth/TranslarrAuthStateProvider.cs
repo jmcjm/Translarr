@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
 public class TranslarrAuthStateProvider(
     IHttpClientFactory httpClientFactory,
-    AuthCookieHolder cookieHolder) : AuthenticationStateProvider
+    AuthCookieHolder cookieHolder,
+    ILogger<TranslarrAuthStateProvider> logger) : AuthenticationStateProvider
 {
     private static readonly AuthenticationState AnonymousState =
         new(new ClaimsPrincipal(new ClaimsIdentity()));
@@ -39,8 +41,9 @@ public class TranslarrAuthStateProvider(
 
             return new AuthenticationState(new ClaimsPrincipal(identity));
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "Failed to check auth state via API");
             return AnonymousState;
         }
     }
