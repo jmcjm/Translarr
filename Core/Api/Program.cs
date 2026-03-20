@@ -100,6 +100,6 @@ public static class Program
             .MapSeriesWatchEndpoints()
             .WithTags("Series Watch");
 
-        app.Run();
+        await app.RunAsync();
     }
 }
