@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Translarr.Core.Api.Models;
 
 namespace Translarr.Core.Api.Endpoints;
 
@@ -63,7 +64,7 @@ public static class AuthEndpoints
         {
             if (await userManager.Users.AnyAsync())
             {
-                return Results.NotFound();
+                return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Setup not available");
             }
 
             var user = new IdentityUser { UserName = request.Username };
@@ -160,7 +161,3 @@ public static class AuthEndpoints
         return Results.Ok(new { message = "Password changed successfully" });
     }
 }
-
-public record SetupRequest(string Username, string Password);
-public record LoginRequest(string Username, string Password, bool RememberMe = false);
-public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
