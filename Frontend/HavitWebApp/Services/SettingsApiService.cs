@@ -41,14 +41,4 @@ public class SettingsApiService(IHttpClientFactory httpClientFactory)
         return await response.Content.ReadFromJsonAsync<ApiTestResult>();
     }
 
-    public async Task<bool> ChangePasswordAsync(string currentPassword, string newPassword)
-    {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
-        var response = await client.PostAsJsonAsync("/api/auth/change-password", new
-        {
-            currentPassword,
-            newPassword
-        });
-        return response.IsSuccessStatusCode;
-    }
 }
