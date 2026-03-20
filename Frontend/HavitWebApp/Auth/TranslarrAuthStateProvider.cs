@@ -45,10 +45,5 @@ public class TranslarrAuthStateProvider(
         }
     }
 
-    public void NotifyAuthStateChanged()
-    {
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
-    }
-
     private record MeResponse(string? Username, bool IsAuthenticated);
 }
