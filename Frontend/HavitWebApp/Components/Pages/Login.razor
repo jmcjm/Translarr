@@ -1,0 +1,57 @@
+@page "/login"
+@attribute [AllowAnonymous]
+
+<PageTitle>Login - Translarr</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <img src="/favicon-32x32.png" alt="Translarr" style="height: 48px;" />
+                        <h3 class="mt-2">Translarr</h3>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Error))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @(Error switch
+                            {
+                                "locked" => "Account locked. Too many failed attempts. Try again later.",
+                                "ratelimit" => "Too many login attempts. Please wait a minute.",
+                                _ => "Invalid username or password."
+                            })
+                        </div>
+                    }
+
+                    <form method="post" action="/account/login">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" name="username" required autofocus />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" name="password" required />
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" name="rememberMe" value="true" id="rememberMe" />
+                            <label class="form-check-label" for="rememberMe">Remember me (30 days)</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? Error { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+}
