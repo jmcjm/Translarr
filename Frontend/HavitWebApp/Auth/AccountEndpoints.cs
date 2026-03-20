@@ -49,13 +49,7 @@ public static class AccountEndpoints
         }
         else
         {
-            var statusCode = (int)response.StatusCode;
-            var errorParam = statusCode switch
-            {
-                423 => "locked",
-                429 => "ratelimit",
-                _ => "invalid"
-            };
+            var errorParam = (int)response.StatusCode == 429 ? "ratelimit" : "invalid";
             context.Response.Redirect($"/login?error={errorParam}");
         }
     }

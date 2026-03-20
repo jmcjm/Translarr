@@ -17,12 +17,9 @@
                     @if (!string.IsNullOrEmpty(Error))
                     {
                         <div class="alert alert-danger" role="alert">
-                            @(Error switch
-                            {
-                                "locked" => "Account locked. Too many failed attempts. Try again later.",
-                                "ratelimit" => "Too many login attempts. Please wait a minute.",
-                                _ => "Invalid username or password."
-                            })
+                            @(Error == "ratelimit"
+                                ? "Too many login attempts. Please wait a minute."
+                                : "Invalid username or password.")
                         </div>
                     }
 
