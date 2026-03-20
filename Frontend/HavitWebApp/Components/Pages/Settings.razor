@@ -1,5 +1,6 @@
 @page "/settings"
 @inject SettingsApiService SettingsService
+@inject AuthApiService AuthService
 @inject IHxMessengerService Messenger
 
 <PageTitle>Settings - Translarr</PageTitle>
@@ -244,7 +245,7 @@
         try
         {
             _isChangingPassword = true;
-            var success = await SettingsService.ChangePasswordAsync(_currentPassword, _newPassword);
+            var success = await AuthService.ChangePasswordAsync(_currentPassword, _newPassword);
 
             if (success)
             {
