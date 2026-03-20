@@ -1,8 +1,27 @@
 @inject NavigationManager NavigationManager
+@inject IHttpClientFactory HttpClientFactory
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        // Check if setup is needed before redirecting to login
+        try
+        {
+            var client = HttpClientFactory.CreateClient("TranslarrApiDirect");
+            var response = await client.GetFromJsonAsync<SetupStatus>("/api/auth/setup/status");
+            if (response?.NeedsSetup == true)
+            {
+                NavigationManager.NavigateTo("/setup", forceLoad: true);
+                return;
+            }
+        }
+        catch
+        {
+            // API not reachable - fall through to login
+        }
+
         NavigationManager.NavigateTo("/login", forceLoad: true);
     }
+
+    private record SetupStatus(bool NeedsSetup);
 }

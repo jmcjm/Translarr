@@ -102,7 +102,9 @@ public class Program
                     context.Response.Headers.Append("Set-Cookie", cookie);
                 }
                 var returnUrl = form["returnUrl"].FirstOrDefault();
-                context.Response.Redirect(string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl);
+                var safeUrl = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//")
+                    ? returnUrl : "/";
+                context.Response.Redirect(safeUrl);
             }
             else
             {
