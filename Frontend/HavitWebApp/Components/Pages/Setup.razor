@@ -1,0 +1,54 @@
+@page "/setup"
+@attribute [AllowAnonymous]
+
+<PageTitle>Setup - Translarr</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <img src="/favicon-32x32.png" alt="Translarr" style="height: 48px;" />
+                        <h3 class="mt-2">Translarr Setup</h3>
+                        <p class="text-muted">Create your admin account</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Error))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @(Error switch
+                            {
+                                "mismatch" => "Passwords do not match.",
+                                _ => "Setup failed. Please try again."
+                            })
+                        </div>
+                    }
+
+                    <form method="post" action="/account/setup">
+                        <AntiforgeryToken />
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" name="username" required autofocus />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" name="password" required minlength="8" />
+                            <div class="form-text">Minimum 8 characters</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" name="confirmPassword" required />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Create Account</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? Error { get; set; }
+}
