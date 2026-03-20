@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Translarr.Core.Application.Constants;
 using Translarr.Core.Infrastructure.Persistence;
 
 namespace Translarr.Core.Infrastructure;
@@ -25,7 +26,7 @@ public static class AuthDependencyInjection
         services.AddIdentity<IdentityUser, IdentityRole>(options =>
             {
                 // Password policy - minimum 8 chars, no complexity requirements
-                options.Password.RequiredLength = 8;
+                options.Password.RequiredLength = AuthConstants.MinPasswordLength;
                 options.Password.RequireDigit = false;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireLowercase = false;
@@ -42,7 +43,7 @@ public static class AuthDependencyInjection
         // Cookie authentication
         services.ConfigureApplicationCookie(options =>
         {
-            options.Cookie.Name = ".Translarr.Auth";
+            options.Cookie.Name = AuthConstants.CookieName;
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.None;
             options.Cookie.SameSite = SameSiteMode.Strict;
@@ -63,10 +64,10 @@ public static class AuthDependencyInjection
         });
 
         // Data Protection - persist keys so cookies survive container restarts
-        var dpKeysPath = configuration["DataProtection:KeysPath"] ?? "/app/data/dp-keys";
+        var dpKeysPath = configuration["DataProtection:KeysPath"] ?? AuthConstants.DefaultDpKeysPath;
         services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
-            .SetApplicationName("Translarr");
+            .SetApplicationName(AuthConstants.DataProtectionAppName);
 
         return services;
     }

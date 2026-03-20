@@ -1,4 +1,5 @@
 @page "/settings"
+@using Translarr.Core.Application.Constants
 @inject SettingsApiService SettingsService
 @inject AuthApiService AuthService
 @inject IHxMessengerService Messenger
@@ -130,7 +131,7 @@
                     <div class="mb-3">
                         <label class="form-label">New Password</label>
                         <input type="password" class="form-control" @bind="_newPassword" />
-                        <div class="form-text">Minimum 8 characters</div>
+                        <div class="form-text">Minimum @AuthConstants.MinPasswordLength characters</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Confirm New Password</label>
@@ -236,9 +237,9 @@
             return;
         }
 
-        if (_newPassword.Length < 8)
+        if (_newPassword.Length < AuthConstants.MinPasswordLength)
         {
-            Messenger.AddError("Password must be at least 8 characters");
+            Messenger.AddError($"Password must be at least {AuthConstants.MinPasswordLength} characters");
             return;
         }
 
