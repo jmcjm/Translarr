@@ -1,6 +1,7 @@
 @page "/setup"
 @attribute [AllowAnonymous]
 @attribute [ExcludeFromInteractiveRouting]
+@using Translarr.Core.Application.Constants
 
 <PageTitle>Setup - Translarr</PageTitle>
 
@@ -34,8 +35,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input type="password" class="form-control" name="password" required minlength="8" />
-                            <div class="form-text">Minimum 8 characters</div>
+                            <input type="password" class="form-control" name="password" required minlength="@AuthConstants.MinPasswordLength" />
+                            <div class="form-text">Minimum @AuthConstants.MinPasswordLength characters</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Confirm Password</label>

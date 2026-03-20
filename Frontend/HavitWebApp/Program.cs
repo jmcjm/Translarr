@@ -1,6 +1,7 @@
 using Havit.Blazor.Components.Web;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Translarr.Core.Application.Constants;
 using Translarr.Frontend.HavitWebApp.Auth;
 using Translarr.Frontend.HavitWebApp.Components;
 using Translarr.Frontend.HavitWebApp.Services;
@@ -32,10 +33,10 @@ public class Program
         builder.Services.AddHttpContextAccessor();
 
         // Data Protection - shared keys with API
-        var dpKeysPath = builder.Configuration["DataProtection:KeysPath"] ?? "/app/data/dp-keys";
+        var dpKeysPath = builder.Configuration["DataProtection:KeysPath"] ?? AuthConstants.DefaultDpKeysPath;
         builder.Services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
-            .SetApplicationName("Translarr");
+            .SetApplicationName(AuthConstants.DataProtectionAppName);
 
         // HttpClient for API - cookie is added by AuthenticatedApiClientFactory (scoped, circuit-aware)
         var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https+http://Translarr-Api";

@@ -1,3 +1,5 @@
+using Translarr.Core.Application.Constants;
+
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
 /// <summary>

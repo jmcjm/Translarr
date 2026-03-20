@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Antiforgery;
+using Translarr.Core.Application.Constants;
 
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
