@@ -7,15 +7,13 @@ namespace Translarr.Frontend.HavitWebApp.Auth;
 /// </summary>
 public class CookieForwardingHandler(AuthCookieHolder cookieHolder) : DelegatingHandler
 {
-    private const string CookieName = ".Translarr.Auth";
-
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
         if (!string.IsNullOrEmpty(cookieHolder.CookieValue))
         {
-            request.Headers.Add("Cookie", $"{CookieName}={cookieHolder.CookieValue}");
+            request.Headers.Add("Cookie", $"{AuthConstants.CookieName}={cookieHolder.CookieValue}");
         }
 
         return base.SendAsync(request, cancellationToken);
