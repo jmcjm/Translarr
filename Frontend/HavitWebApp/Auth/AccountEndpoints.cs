@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Antiforgery;
 
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
@@ -6,10 +7,24 @@ public static class AccountEndpoints
 {
     public static WebApplication MapAccountEndpoints(this WebApplication app)
     {
-        app.MapPost("/account/login", HandleLogin).AllowAnonymous();
-        app.MapPost("/account/setup", HandleSetup).AllowAnonymous();
-        app.MapPost("/account/logout", HandleLogout).AllowAnonymous();
+        app.MapPost("/account/login", HandleLogin).AllowAnonymous()
+            .WithMetadata(new RequireAntiforgeryTokenAttribute());
+        app.MapPost("/account/setup", HandleSetup).AllowAnonymous()
+            .WithMetadata(new RequireAntiforgeryTokenAttribute());
+        app.MapPost("/account/logout", HandleLogout).AllowAnonymous()
+            .WithMetadata(new RequireAntiforgeryTokenAttribute());
         return app;
+    }
+
+    private static void ForwardApiCookies(HttpResponseMessage apiResponse, HttpContext context)
+    {
+        if (apiResponse.Headers.TryGetValues("Set-Cookie", out var cookies))
+        {
+            foreach (var cookie in cookies)
+            {
+                context.Response.Headers.Append("Set-Cookie", cookie);
+            }
+        }
     }
 
     private static async Task HandleLogin(HttpContext context, IHttpClientFactory factory)
@@ -23,13 +38,9 @@ public static class AccountEndpoints
             rememberMe = form.ContainsKey("rememberMe")
         });
 
-        if (response.IsSuccessStatusCode &&
-            response.Headers.TryGetValues("Set-Cookie", out var cookies))
+        if (response.IsSuccessStatusCode)
         {
-            foreach (var cookie in cookies)
-            {
-                context.Response.Headers.Append("Set-Cookie", cookie);
-            }
+            ForwardApiCookies(response, context);
             var returnUrl = form["returnUrl"].FirstOrDefault();
             var safeUrl = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//")
                 ? returnUrl : "/";
@@ -67,13 +78,9 @@ public static class AccountEndpoints
             password
         });
 
-        if (response.IsSuccessStatusCode &&
-            response.Headers.TryGetValues("Set-Cookie", out var cookies))
+        if (response.IsSuccessStatusCode)
         {
-            foreach (var cookie in cookies)
-            {
-                context.Response.Headers.Append("Set-Cookie", cookie);
-            }
+            ForwardApiCookies(response, context);
             context.Response.Redirect("/");
         }
         else

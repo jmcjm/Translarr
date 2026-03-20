@@ -26,7 +26,7 @@ public class Program
 
         // Auth services
         builder.Services.AddScoped<AuthCookieHolder>();
-        builder.Services.AddTransient<CookieForwardingHandler>();
+        builder.Services.AddScoped<AuthenticatedApiClientFactory>();
         builder.Services.AddScoped<AuthenticationStateProvider, TranslarrAuthStateProvider>();
         builder.Services.AddAuthorization();
         builder.Services.AddHttpContextAccessor();
@@ -37,17 +37,20 @@ public class Program
             .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
             .SetApplicationName("Translarr");
 
-        // HttpClient for API with cookie forwarding (used by all API services and auth state provider)
+        // HttpClient for API - cookie is added by AuthenticatedApiClientFactory (scoped, circuit-aware)
         var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https+http://Translarr-Api";
         builder.Services.AddHttpClient("TranslarrApi", client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
-        }).AddHttpMessageHandler<CookieForwardingHandler>();
+        });
 
-        // HttpClient without cookie forwarding - for login/setup/logout proxy endpoints
+        // HttpClient without cookie handling - for login/setup/logout proxy endpoints
         builder.Services.AddHttpClient("TranslarrApiDirect", client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            UseCookies = false
         });
 
         // API services
