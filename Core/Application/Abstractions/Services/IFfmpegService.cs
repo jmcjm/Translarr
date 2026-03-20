@@ -5,7 +5,7 @@ namespace Translarr.Core.Application.Abstractions.Services;
 public interface IFfmpegService
 {
     Task<object> GetVideoStreamsAsync(string videoPath);
-    Task<SubtitleStreamInfo?> FindBestSubtitleStreamAsync(string videoPath);
+    Task<SubtitleSearchResult> FindBestSubtitleStreamAsync(string videoPath);
     Task<bool> ExtractSubtitlesAsync(string videoPath, int streamIndex, string outputPath, string codecName);
     Task<bool> ConvertToSrt(string inputPath, string outputPath);
 }

@@ -38,16 +38,36 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
         };
     }
 
-    public async Task<SubtitleStreamInfo?> FindBestSubtitleStreamAsync(string videoPath)
+    private static readonly HashSet<string> BitmapCodecs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "hdmv_pgs_subtitle", "pgssub", "dvd_subtitle", "dvdsub", "xsub"
+    };
+
+    public async Task<SubtitleSearchResult> FindBestSubtitleStreamAsync(string videoPath)
     {
         logger.LogInformation("Finding best subtitle stream for {file}", videoPath);
         var mediaInfo = await FFProbe.AnalyseAsync(videoPath);
-        var subtitleStreams = mediaInfo.SubtitleStreams.ToList();
+        var allSubtitleStreams = mediaInfo.SubtitleStreams.ToList();
+
+        if (allSubtitleStreams.Count == 0)
+        {
+            logger.LogWarning("No subtitle streams found for {file}", videoPath);
+            return new SubtitleSearchResult(null, "No embedded subtitle streams found");
+        }
+
+        // Filter out bitmap-based subtitles (PGS, VobSub, XSUB) - these can't be extracted as text without OCR
+        var subtitleStreams = allSubtitleStreams
+            .Where(s => !BitmapCodecs.Contains(s.CodecName ?? ""))
+            .ToList();
 
         if (subtitleStreams.Count == 0)
         {
-            logger.LogWarning("No subtitle streams found for {file}", videoPath);
-            return null;
+            var codecs = string.Join(", ", allSubtitleStreams.Select(s => s.CodecName).Distinct());
+            logger.LogWarning(
+                "File {file} has {count} subtitle stream(s), but all are bitmap-based ({codecs}) which cannot be extracted as text. OCR would be required",
+                videoPath, allSubtitleStreams.Count, codecs);
+            return new SubtitleSearchResult(null,
+                $"All {allSubtitleStreams.Count} subtitle stream(s) are bitmap-based ({codecs}) and cannot be extracted as text. OCR support is not yet available");
         }
 
         // Prefer English subtitles
@@ -87,14 +107,14 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
                              (englishStreams.FirstOrDefault() ?? subtitleStreams.First())!;
         }
 
-        return new SubtitleStreamInfo
+        return new SubtitleSearchResult(new SubtitleStreamInfo
         {
             StreamIndex = selectedStream.Index,
             Language = selectedStream.Language ?? "und",
             CodecName = selectedStream.CodecName,
-            IsSdh = sdhKeywords.Any(keyword => 
+            IsSdh = sdhKeywords.Any(keyword =>
                 selectedStream.Language?.ToLowerInvariant().Contains(keyword, StringComparison.InvariantCultureIgnoreCase) ?? false)
-        };
+        });
     }
 
     public async Task<bool> ExtractSubtitlesAsync(string videoPath, int streamIndex, string outputPath, string codecName)
@@ -111,9 +131,7 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
                 "ssa" => "ass",
                 "mov_text" => "srt",
                 "webvtt" => "webvtt",
-                "dvd_subtitle" => "srt",
-                "dvdsub" => "srt",
-                "hdmv_pgs_subtitle" => "srt",
+                // Bitmap codecs (dvd_subtitle, dvdsub, hdmv_pgs_subtitle) are filtered out in FindBestSubtitleStreamAsync
                 _ => "srt" // Default fallback to SRT
             };
 
