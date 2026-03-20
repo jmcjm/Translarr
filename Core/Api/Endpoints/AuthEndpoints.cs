@@ -18,7 +18,8 @@ public static class AuthEndpoints
 
         group.MapPost("/setup", Setup)
             .WithName("Setup")
-            .AllowAnonymous();
+            .AllowAnonymous()
+            .RequireRateLimiting("login");
 
         group.MapPost("/login", Login)
             .WithName("Login")
@@ -108,14 +109,7 @@ public static class AuthEndpoints
 
         if (!result.Succeeded)
         {
-            if (result.IsLockedOut)
-            {
-                return Results.Problem(
-                    statusCode: StatusCodes.Status423Locked,
-                    title: "Account locked",
-                    detail: "Too many failed attempts. Please try again later.");
-            }
-
+            // Same response for invalid credentials and lockout to prevent account enumeration
             return Results.Problem(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Invalid credentials");
