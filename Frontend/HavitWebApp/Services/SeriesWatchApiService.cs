@@ -1,13 +1,14 @@
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Models;
+using Translarr.Frontend.HavitWebApp.Auth;
 
 namespace Translarr.Frontend.HavitWebApp.Services;
 
-public class SeriesWatchApiService(IHttpClientFactory httpClientFactory)
+public class SeriesWatchApiService(AuthenticatedApiClientFactory apiClientFactory)
 {
     public async Task<List<SeriesGroupDto>?> GetSeriesGroupsAsync()
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
         var response = await client.GetAsync("/api/series/series");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<List<SeriesGroupDto>>();
@@ -15,7 +16,7 @@ public class SeriesWatchApiService(IHttpClientFactory httpClientFactory)
 
     public async Task<List<SeriesWatchConfigDto>?> GetAllWatchConfigsAsync()
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
         var response = await client.GetAsync("/api/series/watch-configs");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<List<SeriesWatchConfigDto>>();
@@ -23,7 +24,7 @@ public class SeriesWatchApiService(IHttpClientFactory httpClientFactory)
 
     public async Task<SetAutoWatchResult?> SetAutoWatchAsync(string series, string? season, bool autoWatch)
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
 
         var queryParams = new List<string>
         {
@@ -42,7 +43,7 @@ public class SeriesWatchApiService(IHttpClientFactory httpClientFactory)
 
     public async Task<bool> RemoveAutoWatchAsync(string series, string? season)
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
 
         var queryParams = new List<string>
         {
@@ -65,7 +66,7 @@ public class SeriesWatchApiService(IHttpClientFactory httpClientFactory)
 
     public async Task<int> BulkSetWantedAsync(string series, string? season, bool wanted)
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
 
         var queryParams = new List<string>
         {

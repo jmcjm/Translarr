@@ -5,11 +5,11 @@ using Microsoft.Extensions.Logging;
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
 public class TranslarrAuthStateProvider(
-    IHttpClientFactory httpClientFactory,
+    AuthenticatedApiClientFactory apiClientFactory,
     AuthCookieHolder cookieHolder,
     ILogger<TranslarrAuthStateProvider> logger) : AuthenticationStateProvider
 {
-    private static readonly AuthenticationState AnonymousState =
+    private static AuthenticationState AnonymousState =>
         new(new ClaimsPrincipal(new ClaimsIdentity()));
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -21,7 +21,7 @@ public class TranslarrAuthStateProvider(
 
         try
         {
-            var client = httpClientFactory.CreateClient("TranslarrApi");
+            var client = apiClientFactory.CreateClient();
             var response = await client.GetAsync("/api/auth/me");
 
             if (!response.IsSuccessStatusCode)
