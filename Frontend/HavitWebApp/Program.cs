@@ -29,10 +29,7 @@ public class Program
         builder.Services.AddScoped<AuthCookieHolder>();
         builder.Services.AddScoped<AuthenticatedApiClientFactory>();
         builder.Services.AddScoped<AuthenticationStateProvider, TranslarrAuthStateProvider>();
-        builder.Services.AddAuthentication();
-        builder.Services.AddAuthorization(options =>
-        {
-        });
+        builder.Services.AddAuthorizationCore();
         builder.Services.AddHttpContextAccessor();
 
         // Data Protection - shared keys with API
