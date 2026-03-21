@@ -1,7 +1,5 @@
 using Havit.Blazor.Components.Web;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.DataProtection;
-using Translarr.Core.Application.Constants;
 using Translarr.Frontend.HavitWebApp.Auth;
 using Translarr.Frontend.HavitWebApp.Components;
 using Translarr.Frontend.HavitWebApp.Services;
@@ -32,28 +30,17 @@ public class Program
         builder.Services.AddCascadingAuthenticationState();
         builder.Services.AddHttpContextAccessor();
 
-        // Data Protection - shared keys with API
-        var dpKeysPath = builder.Configuration["DataProtection:KeysPath"]
-                         ?? (builder.Environment.IsDevelopment() ? Path.Combine(Path.GetTempPath(), "translarr-dp-keys") : AuthConstants.DefaultDpKeysPath);
-        Directory.CreateDirectory(dpKeysPath);
-        builder.Services.AddDataProtection()
-            .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
-            .SetApplicationName(AuthConstants.DataProtectionAppName);
-
-        // HttpClient for API - cookie is added by AuthenticatedApiClientFactory (scoped, circuit-aware)
+        // HttpClient for API - Bearer token added by AuthenticatedApiClientFactory (scoped, circuit-aware)
         var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https+http://Translarr-Api";
         builder.Services.AddHttpClient("TranslarrApi", client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
         });
 
-        // HttpClient without cookie handling - for login/setup/logout proxy endpoints
+        // HttpClient for login/setup/logout proxy endpoints (no auth needed)
         builder.Services.AddHttpClient("TranslarrApiDirect", client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
-        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-        {
-            UseCookies = false
         });
 
         // API services
@@ -74,22 +61,6 @@ public class Program
         }
 
         app.UseStaticFiles();
-
-        // Capture auth cookie from browser request into circuit-scoped holder
-        app.Use(async (context, next) =>
-        {
-            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("CookieCapture");
-            var cookieHolder = context.RequestServices.GetService<AuthCookieHolder>();
-            var hasCookie = context.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var cookieValue);
-            logger.LogInformation("Cookie capture: path={Path}, hasCookie={HasCookie}, holderNull={HolderNull}",
-                context.Request.Path, hasCookie, cookieHolder == null);
-            if (cookieHolder != null && hasCookie)
-            {
-                cookieHolder.CookieValue = cookieValue;
-                logger.LogInformation("Cookie captured, length={Length}", cookieValue?.Length);
-            }
-            await next();
-        });
 
         app.UseAntiforgery();
 

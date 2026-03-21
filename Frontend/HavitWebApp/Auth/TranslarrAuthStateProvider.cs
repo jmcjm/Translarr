@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
@@ -6,7 +7,6 @@ using Translarr.Core.Application.Constants;
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
 public class TranslarrAuthStateProvider(
-    AuthenticatedApiClientFactory apiClientFactory,
     AuthCookieHolder cookieHolder,
     IHttpContextAccessor httpContextAccessor,
     ILogger<TranslarrAuthStateProvider> logger) : AuthenticationStateProvider
@@ -16,55 +16,44 @@ public class TranslarrAuthStateProvider(
 
     private bool _initialized;
 
-    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+    public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        // On first call (SSR render), HttpContext is available - grab cookie directly
         if (!_initialized)
         {
             _initialized = true;
             var httpContext = httpContextAccessor.HttpContext;
             if (httpContext != null &&
-                httpContext.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var cookie) &&
-                !string.IsNullOrEmpty(cookie))
+                httpContext.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var token) &&
+                !string.IsNullOrEmpty(token))
             {
-                cookieHolder.CookieValue = cookie;
-                logger.LogInformation("Cookie captured from HttpContext on first call, length={Length}", cookie.Length);
+                cookieHolder.CookieValue = token;
             }
         }
 
         if (string.IsNullOrEmpty(cookieHolder.CookieValue))
         {
-            return AnonymousState;
+            return Task.FromResult(AnonymousState);
         }
 
         try
         {
-            var client = apiClientFactory.CreateClient();
-            var response = await client.GetAsync("/api/auth/me");
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(cookieHolder.CookieValue);
 
-            if (!response.IsSuccessStatusCode)
+            if (jwt.ValidTo < DateTime.UtcNow)
             {
-                return AnonymousState;
+                cookieHolder.CookieValue = null;
+                return Task.FromResult(AnonymousState);
             }
 
-            var json = await response.Content.ReadFromJsonAsync<MeResponse>();
-            if (json is not { IsAuthenticated: true })
-            {
-                return AnonymousState;
-            }
-
-            var identity = new ClaimsIdentity(
-                [new Claim(ClaimTypes.Name, json.Username ?? "admin")],
-                authenticationType: "Translarr");
-
-            return new AuthenticationState(new ClaimsPrincipal(identity));
+            var identity = new ClaimsIdentity(jwt.Claims, authenticationType: "jwt");
+            return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identity)));
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to check auth state via API");
-            return AnonymousState;
+            logger.LogWarning(ex, "Failed to decode JWT");
+            cookieHolder.CookieValue = null;
+            return Task.FromResult(AnonymousState);
         }
     }
-
-    private record MeResponse(string? Username, bool IsAuthenticated);
 }

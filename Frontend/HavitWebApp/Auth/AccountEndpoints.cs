@@ -17,17 +17,6 @@ public static class AccountEndpoints
         return app;
     }
 
-    private static void ForwardApiCookies(HttpResponseMessage apiResponse, HttpContext context)
-    {
-        if (apiResponse.Headers.TryGetValues("Set-Cookie", out var cookies))
-        {
-            foreach (var cookie in cookies)
-            {
-                context.Response.Headers.Append("Set-Cookie", cookie);
-            }
-        }
-    }
-
     private static async Task HandleLogin(HttpContext context, IHttpClientFactory factory)
     {
         var form = await context.Request.ReadFormAsync();
@@ -41,7 +30,25 @@ public static class AccountEndpoints
 
         if (response.IsSuccessStatusCode)
         {
-            ForwardApiCookies(response, context);
+            var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+            if (result?.Token != null)
+            {
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Strict,
+                    Secure = false,
+                    Path = "/"
+                };
+
+                if (form.ContainsKey("rememberMe"))
+                {
+                    cookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(AuthConstants.JwtExpirationDays);
+                }
+
+                context.Response.Cookies.Append(AuthConstants.CookieName, result.Token, cookieOptions);
+            }
+
             var returnUrl = form["returnUrl"].FirstOrDefault();
             var safeUrl = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//")
                 ? returnUrl : "/";
@@ -75,7 +82,21 @@ public static class AccountEndpoints
 
         if (response.IsSuccessStatusCode)
         {
-            ForwardApiCookies(response, context);
+            var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+            if (result?.Token != null)
+            {
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Strict,
+                    Secure = false,
+                    Path = "/",
+                    Expires = DateTimeOffset.UtcNow.AddDays(AuthConstants.JwtExpirationDays)
+                };
+
+                context.Response.Cookies.Append(AuthConstants.CookieName, result.Token, cookieOptions);
+            }
+
             context.Response.Redirect("/");
         }
         else
@@ -84,16 +105,12 @@ public static class AccountEndpoints
         }
     }
 
-    private static async Task HandleLogout(HttpContext context, IHttpClientFactory factory)
+    private static Task HandleLogout(HttpContext context, IHttpClientFactory factory)
     {
-        var client = factory.CreateClient("TranslarrApiDirect");
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout");
-        if (context.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var cookie))
-        {
-            request.Headers.Add("Cookie", $"{AuthConstants.CookieName}={cookie}");
-        }
-        await client.SendAsync(request);
         context.Response.Cookies.Delete(AuthConstants.CookieName);
         context.Response.Redirect("/login");
+        return Task.CompletedTask;
     }
+
+    private record TokenResponse(string? Token);
 }

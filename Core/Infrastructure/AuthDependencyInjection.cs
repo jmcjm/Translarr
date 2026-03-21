@@ -1,9 +1,11 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Translarr.Core.Application.Constants;
 using Translarr.Core.Infrastructure.Persistence;
 
@@ -13,7 +15,6 @@ public static class AuthDependencyInjection
 {
     public static IServiceCollection AddTranslarrAuth(this IServiceCollection services, IConfiguration configuration)
     {
-        // Auth database - separate from main translarr-db
         var connectionString = configuration.GetConnectionString("translarr-auth")
                                ?? "Data Source=translarr-auth.db";
 
@@ -22,17 +23,14 @@ public static class AuthDependencyInjection
             options.UseSqlite(connectionString);
         });
 
-        // ASP.NET Identity
         services.AddIdentity<IdentityUser, IdentityRole>(options =>
             {
-                // Password policy - minimum 8 chars, no complexity requirements
                 options.Password.RequiredLength = AuthConstants.MinPasswordLength;
                 options.Password.RequireDigit = false;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireLowercase = false;
                 options.Password.RequireNonAlphanumeric = false;
 
-                // Lockout - 5 failed attempts, 15 min lockout
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 options.Lockout.AllowedForNewUsers = true;
@@ -40,30 +38,29 @@ public static class AuthDependencyInjection
             .AddEntityFrameworkStores<AuthDbContext>()
             .AddDefaultTokenProviders();
 
-        // Cookie authentication
-        services.ConfigureApplicationCookie(options =>
-        {
-            options.Cookie.Name = AuthConstants.CookieName;
-            options.Cookie.HttpOnly = true;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.None;
-            options.Cookie.SameSite = SameSiteMode.Strict;
-            options.ExpireTimeSpan = TimeSpan.FromDays(30);
-            options.SlidingExpiration = true;
+        // JWT Bearer authentication
+        var jwtSecret = configuration["Jwt:Secret"] ?? AuthConstants.DefaultJwtSecret;
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
 
-            // API returns 401/403 instead of redirecting to a login page
-            options.Events.OnRedirectToLogin = context =>
+        services.AddAuthentication(options =>
             {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
-            };
-            options.Events.OnRedirectToAccessDenied = context =>
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
             {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                return Task.CompletedTask;
-            };
-        });
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = key,
+                    ClockSkew = TimeSpan.FromMinutes(1)
+                };
+            });
 
-        // Data Protection - persist keys so cookies survive container restarts
+        // Data Protection - API only (no sharing with WebApp needed anymore)
         var dpKeysPath = configuration["DataProtection:KeysPath"]
                          ?? (Directory.Exists("/app") ? AuthConstants.DefaultDpKeysPath : Path.Combine(Path.GetTempPath(), "translarr-dp-keys"));
         Directory.CreateDirectory(dpKeysPath);
@@ -74,9 +71,6 @@ public static class AuthDependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Ensure auth database is created and ready (uses EnsureCreatedAsync, not migrations)
-    /// </summary>
     public static async Task InitializeAuthDatabaseAsync(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();

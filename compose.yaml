@@ -25,6 +25,7 @@ services:
       - ConnectionStrings__translarr-db=Data Source=/app/data/translarr.db
       - ConnectionStrings__translarr-auth=Data Source=/app/data/translarr-auth.db
       - DataProtection__KeysPath=/app/data/dp-keys
+      - Jwt__Secret=${JWT_SECRET:-TranslarrDevSecret_ChangeInProduction_AtLeast32Chars!!}
       - MediaRootPath=/app/mediaroot
       - ASPNETCORE_URLS=http://+:8080
       - ASPNETCORE_ENVIRONMENT=Production
@@ -44,12 +45,8 @@ services:
       - "${WEB_PORT:-5001}:8080"
     environment:
       - ApiBaseUrl=http://translarr-api:8080
-      - DataProtection__KeysPath=/app/data/dp-keys
       - ASPNETCORE_URLS=http://+:8080
       - ASPNETCORE_ENVIRONMENT=Production
-    volumes:
-      # Shared volume for Data Protection keys (API creates keys, WebApp reads them)
-      - translarr-db:/app/data
     depends_on:
       - translarr-api
 

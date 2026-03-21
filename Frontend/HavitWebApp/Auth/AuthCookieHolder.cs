@@ -1,9 +1,8 @@
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
 /// <summary>
-/// Circuit-scoped service that holds the auth cookie captured during the
-/// initial HTTP request. HttpContext is null during SignalR interactions,
-/// so we capture the cookie once and reuse it for the circuit lifetime.
+/// Circuit-scoped service holding the JWT token.
+/// Populated from cookie on circuit start, used by AuthenticatedApiClientFactory.
 /// </summary>
 public class AuthCookieHolder
 {

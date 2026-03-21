@@ -1,8 +1,13 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using Translarr.Core.Api.Models;
+using Translarr.Core.Application.Constants;
 
 namespace Translarr.Core.Api.Endpoints;
 
@@ -28,7 +33,7 @@ public static class AuthEndpoints
 
         group.MapPost("/logout", Logout)
             .WithName("Logout")
-            .RequireAuthorization();
+            .AllowAnonymous();
 
         group.MapGet("/me", GetCurrentUser)
             .WithName("GetCurrentUser")
@@ -50,7 +55,7 @@ public static class AuthEndpoints
     private static async Task<IResult> Setup(
         [FromBody] SetupRequest request,
         UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager)
+        IConfiguration configuration)
     {
         if (!await SetupLock.WaitAsync(TimeSpan.FromSeconds(5)))
         {
@@ -88,8 +93,8 @@ public static class AuthEndpoints
                 });
             }
 
-            await signInManager.SignInAsync(user, isPersistent: true);
-            return Results.Ok(new { message = "Setup complete" });
+            var token = GenerateJwtToken(user, configuration);
+            return Results.Ok(new { token });
         }
         finally
         {
@@ -99,28 +104,30 @@ public static class AuthEndpoints
 
     private static async Task<IResult> Login(
         [FromBody] LoginRequest request,
-        SignInManager<IdentityUser> signInManager)
+        UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
+        IConfiguration configuration)
     {
-        var result = await signInManager.PasswordSignInAsync(
-            request.Username,
+        var user = await userManager.FindByNameAsync(request.Username);
+        var result = await signInManager.CheckPasswordSignInAsync(
+            user ?? new IdentityUser(),
             request.Password,
-            isPersistent: request.RememberMe,
             lockoutOnFailure: true);
 
-        if (!result.Succeeded)
+        if (result.IsLockedOut || !result.Succeeded)
         {
-            // Same response for invalid credentials and lockout to prevent account enumeration
             return Results.Problem(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Invalid credentials");
         }
 
-        return Results.Ok(new { message = "Login successful" });
+        var token = GenerateJwtToken(user!, configuration);
+        return Results.Ok(new { token });
     }
 
-    private static async Task<IResult> Logout(SignInManager<IdentityUser> signInManager)
+    private static IResult Logout()
     {
-        await signInManager.SignOutAsync();
+        // JWT is stateless - client just drops the token
         return Results.Ok(new { message = "Logged out" });
     }
 
@@ -153,5 +160,25 @@ public static class AuthEndpoints
         }
 
         return Results.Ok(new { message = "Password changed successfully" });
+    }
+
+    private static string GenerateJwtToken(IdentityUser user, IConfiguration configuration)
+    {
+        var secret = configuration["Jwt:Secret"] ?? AuthConstants.DefaultJwtSecret;
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id),
+            new Claim(ClaimTypes.Name, user.UserName ?? "admin")
+        };
+
+        var token = new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.UtcNow.AddDays(AuthConstants.JwtExpirationDays),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

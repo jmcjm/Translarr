@@ -17,6 +17,7 @@
 
     <ItemGroup>
         <PackageReference Include="Havit.Blazor.Components.Web.Bootstrap" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     </ItemGroup>
 
     <ItemGroup>
