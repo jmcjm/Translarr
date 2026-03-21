@@ -14,8 +14,12 @@ public class TranslarrAuthStateProvider(
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
+        logger.LogInformation("GetAuthenticationStateAsync called, cookieValue={HasCookie}",
+            !string.IsNullOrEmpty(cookieHolder.CookieValue));
+
         if (string.IsNullOrEmpty(cookieHolder.CookieValue))
         {
+            logger.LogInformation("No cookie in holder, returning anonymous");
             return AnonymousState;
         }
 
@@ -23,6 +27,8 @@ public class TranslarrAuthStateProvider(
         {
             var client = apiClientFactory.CreateClient();
             var response = await client.GetAsync("/api/auth/me");
+
+            logger.LogInformation("API /auth/me returned {StatusCode}", (int)response.StatusCode);
 
             if (!response.IsSuccessStatusCode)
             {

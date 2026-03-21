@@ -78,11 +78,15 @@ public class Program
         // Capture auth cookie from browser request into circuit-scoped holder
         app.Use(async (context, next) =>
         {
+            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("CookieCapture");
             var cookieHolder = context.RequestServices.GetService<AuthCookieHolder>();
-            if (cookieHolder != null &&
-                context.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var cookieValue))
+            var hasCookie = context.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var cookieValue);
+            logger.LogInformation("Cookie capture: path={Path}, hasCookie={HasCookie}, holderNull={HolderNull}",
+                context.Request.Path, hasCookie, cookieHolder == null);
+            if (cookieHolder != null && hasCookie)
             {
                 cookieHolder.CookieValue = cookieValue;
+                logger.LogInformation("Cookie captured, length={Length}", cookieValue?.Length);
             }
             await next();
         });
