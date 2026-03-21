@@ -32,9 +32,6 @@ public class Program
         builder.Services.AddAuthentication();
         builder.Services.AddAuthorization(options =>
         {
-            options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build();
         });
         builder.Services.AddHttpContextAccessor();
 
