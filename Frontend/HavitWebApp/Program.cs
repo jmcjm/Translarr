@@ -29,6 +29,7 @@ public class Program
         builder.Services.AddScoped<AuthCookieHolder>();
         builder.Services.AddScoped<AuthenticatedApiClientFactory>();
         builder.Services.AddScoped<AuthenticationStateProvider, TranslarrAuthStateProvider>();
+        builder.Services.AddAuthentication();
         builder.Services.AddAuthorization(options =>
         {
             options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
