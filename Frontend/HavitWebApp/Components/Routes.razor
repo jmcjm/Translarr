@@ -1,22 +1,36 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Translarr.Frontend.HavitWebApp.Components.Account
 
-<CascadingAuthenticationState>
-    <Router AppAssembly="typeof(Program).Assembly">
-        <Found Context="routeData">
-            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
-                <NotAuthorized>
-                    <RedirectToLogin />
-                </NotAuthorized>
-                <Authorizing>
-                    <div class="d-flex justify-content-center my-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Checking authentication...</span>
-                        </div>
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeView>
+            <Authorized>
+                <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </Authorized>
+            <NotAuthorized>
+                @{
+                    // Allow login and setup pages through without auth
+                    var path = routeData.PageType.GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), false)
+                        .OfType<Microsoft.AspNetCore.Components.RouteAttribute>()
+                        .FirstOrDefault()?.Template ?? "";
+                    if (path is "/login" or "/setup")
+                    {
+                        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+                    }
+                    else
+                    {
+                        <RedirectToLogin />
+                    }
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <div class="d-flex justify-content-center my-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Checking authentication...</span>
                     </div>
-                </Authorizing>
-            </AuthorizeRouteView>
-            <FocusOnNavigate RouteData="routeData" Selector="h1" />
-        </Found>
-    </Router>
-</CascadingAuthenticationState>
+                </div>
+            </Authorizing>
+        </AuthorizeView>
+    </Found>
+</Router>
