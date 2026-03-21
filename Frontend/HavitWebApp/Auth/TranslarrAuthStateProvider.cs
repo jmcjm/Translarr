@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Translarr.Core.Application.Constants;
 
 namespace Translarr.Frontend.HavitWebApp.Auth;
@@ -9,6 +10,7 @@ namespace Translarr.Frontend.HavitWebApp.Auth;
 public class TranslarrAuthStateProvider(
     AuthCookieHolder cookieHolder,
     IHttpContextAccessor httpContextAccessor,
+    IOptions<AuthOptions> authOptions,
     ILogger<TranslarrAuthStateProvider> logger) : AuthenticationStateProvider
 {
     private static AuthenticationState AnonymousState =>
@@ -23,7 +25,7 @@ public class TranslarrAuthStateProvider(
             _initialized = true;
             var httpContext = httpContextAccessor.HttpContext;
             if (httpContext != null &&
-                httpContext.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var token) &&
+                httpContext.Request.Cookies.TryGetValue(authOptions.Value.CookieName, out var token) &&
                 !string.IsNullOrEmpty(token))
             {
                 cookieHolder.CookieValue = token;

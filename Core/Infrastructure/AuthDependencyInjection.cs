@@ -15,6 +15,19 @@ public static class AuthDependencyInjection
 {
     public static IServiceCollection AddTranslarrAuth(this IServiceCollection services, IConfiguration configuration)
     {
+        // Bind options
+        var authOptions = new AuthOptions();
+        configuration.GetSection(AuthOptions.SectionName).Bind(authOptions);
+        services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
+
+        var jwtOptions = new JwtOptions();
+        configuration.GetSection(JwtOptions.SectionName).Bind(jwtOptions);
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+
+        if (string.IsNullOrEmpty(jwtOptions.Secret))
+            throw new InvalidOperationException("Jwt:Secret is not configured. Set Jwt__Secret environment variable.");
+
+        // Auth database
         var connectionString = configuration.GetConnectionString("translarr-auth")
                                ?? "Data Source=translarr-auth.db";
 
@@ -23,9 +36,10 @@ public static class AuthDependencyInjection
             options.UseSqlite(connectionString);
         });
 
+        // Identity - user management
         services.AddIdentity<IdentityUser, IdentityRole>(options =>
             {
-                options.Password.RequiredLength = AuthConstants.MinPasswordLength;
+                options.Password.RequiredLength = authOptions.MinPasswordLength;
                 options.Password.RequireDigit = false;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireLowercase = false;
@@ -39,8 +53,7 @@ public static class AuthDependencyInjection
             .AddDefaultTokenProviders();
 
         // JWT Bearer authentication
-        var jwtSecret = configuration["Jwt:Secret"] ?? AuthConstants.DefaultJwtSecret;
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret));
 
         services.AddAuthentication(options =>
             {
@@ -60,13 +73,13 @@ public static class AuthDependencyInjection
                 };
             });
 
-        // Data Protection - API only (no sharing with WebApp needed anymore)
+        // Data Protection - API only
         var dpKeysPath = configuration["DataProtection:KeysPath"]
-                         ?? (Directory.Exists("/app") ? AuthConstants.DefaultDpKeysPath : Path.Combine(Path.GetTempPath(), "translarr-dp-keys"));
+                         ?? (Directory.Exists("/app") ? "/app/data/dp-keys" : Path.Combine(Path.GetTempPath(), "translarr-dp-keys"));
         Directory.CreateDirectory(dpKeysPath);
         services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
-            .SetApplicationName(AuthConstants.DataProtectionAppName);
+            .SetApplicationName("Translarr");
 
         return services;
     }

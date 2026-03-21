@@ -1,6 +1,8 @@
 @page "/setup"
 @attribute [AllowAnonymous]
+@using Microsoft.Extensions.Options
 @using Translarr.Core.Application.Constants
+@inject IOptions<AuthOptions> AuthOptions
 
 <PageTitle>Setup - Translarr</PageTitle>
 
@@ -34,8 +36,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input type="password" class="form-control" name="password" required minlength="@AuthConstants.MinPasswordLength" />
-                            <div class="form-text">Minimum @AuthConstants.MinPasswordLength characters</div>
+                            <input type="password" class="form-control" name="password" required minlength="@AuthOptions.Value.MinPasswordLength" />
+                            <div class="form-text">Minimum @AuthOptions.Value.MinPasswordLength characters</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Confirm Password</label>

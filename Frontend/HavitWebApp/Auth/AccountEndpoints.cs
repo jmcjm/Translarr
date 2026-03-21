@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.Extensions.Options;
 using Translarr.Core.Application.Constants;
 
 namespace Translarr.Frontend.HavitWebApp.Auth;
@@ -17,7 +18,7 @@ public static class AccountEndpoints
         return app;
     }
 
-    private static async Task HandleLogin(HttpContext context, IHttpClientFactory factory)
+    private static async Task HandleLogin(HttpContext context, IHttpClientFactory factory, IOptions<AuthOptions> authOptions)
     {
         var form = await context.Request.ReadFormAsync();
         var client = factory.CreateClient("TranslarrApiDirect");
@@ -33,20 +34,7 @@ public static class AccountEndpoints
             var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
             if (result?.Token != null)
             {
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    SameSite = SameSiteMode.Strict,
-                    Secure = false,
-                    Path = "/"
-                };
-
-                if (form.ContainsKey("rememberMe"))
-                {
-                    cookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(AuthConstants.JwtExpirationDays);
-                }
-
-                context.Response.Cookies.Append(AuthConstants.CookieName, result.Token, cookieOptions);
+                SetTokenCookie(context, authOptions.Value, result.Token, persistent: form.ContainsKey("rememberMe"));
             }
 
             var returnUrl = form["returnUrl"].FirstOrDefault();
@@ -61,7 +49,7 @@ public static class AccountEndpoints
         }
     }
 
-    private static async Task HandleSetup(HttpContext context, IHttpClientFactory factory)
+    private static async Task HandleSetup(HttpContext context, IHttpClientFactory factory, IOptions<AuthOptions> authOptions)
     {
         var form = await context.Request.ReadFormAsync();
         var password = form["password"].ToString();
@@ -85,16 +73,7 @@ public static class AccountEndpoints
             var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
             if (result?.Token != null)
             {
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    SameSite = SameSiteMode.Strict,
-                    Secure = false,
-                    Path = "/",
-                    Expires = DateTimeOffset.UtcNow.AddDays(AuthConstants.JwtExpirationDays)
-                };
-
-                context.Response.Cookies.Append(AuthConstants.CookieName, result.Token, cookieOptions);
+                SetTokenCookie(context, authOptions.Value, result.Token, persistent: true);
             }
 
             context.Response.Redirect("/");
@@ -105,11 +84,29 @@ public static class AccountEndpoints
         }
     }
 
-    private static Task HandleLogout(HttpContext context, IHttpClientFactory factory)
+    private static Task HandleLogout(HttpContext context, IOptions<AuthOptions> authOptions)
     {
-        context.Response.Cookies.Delete(AuthConstants.CookieName);
+        context.Response.Cookies.Delete(authOptions.Value.CookieName);
         context.Response.Redirect("/login");
         return Task.CompletedTask;
+    }
+
+    private static void SetTokenCookie(HttpContext context, AuthOptions options, string token, bool persistent)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Strict,
+            Secure = false,
+            Path = "/"
+        };
+
+        if (persistent)
+        {
+            cookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(30);
+        }
+
+        context.Response.Cookies.Append(options.CookieName, token, cookieOptions);
     }
 
     private record TokenResponse(string? Token);

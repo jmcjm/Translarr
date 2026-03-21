@@ -1,5 +1,6 @@
 using Havit.Blazor.Components.Web;
 using Microsoft.AspNetCore.Components.Authorization;
+using Translarr.Core.Application.Constants;
 using Translarr.Frontend.HavitWebApp.Auth;
 using Translarr.Frontend.HavitWebApp.Components;
 using Translarr.Frontend.HavitWebApp.Services;
@@ -23,7 +24,8 @@ public class Program
 
         builder.Services.AddScoped<ThemeService>();
 
-        // Auth - Blazor-level only, no HTTP auth middleware
+        // Auth
+        builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
         builder.Services.AddScoped<AuthCookieHolder>();
         builder.Services.AddScoped<AuthenticatedApiClientFactory>();
         builder.Services.AddScoped<AuthenticationStateProvider, TranslarrAuthStateProvider>();

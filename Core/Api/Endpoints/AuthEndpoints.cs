@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Constants;
@@ -55,7 +55,7 @@ public static class AuthEndpoints
     private static async Task<IResult> Setup(
         [FromBody] SetupRequest request,
         UserManager<IdentityUser> userManager,
-        IConfiguration configuration)
+        IOptions<JwtOptions> jwtOptions)
     {
         if (!await SetupLock.WaitAsync(TimeSpan.FromSeconds(5)))
         {
@@ -93,7 +93,7 @@ public static class AuthEndpoints
                 });
             }
 
-            var token = GenerateJwtToken(user, configuration);
+            var token = GenerateJwtToken(user, jwtOptions.Value);
             return Results.Ok(new { token });
         }
         finally
@@ -106,7 +106,7 @@ public static class AuthEndpoints
         [FromBody] LoginRequest request,
         UserManager<IdentityUser> userManager,
         SignInManager<IdentityUser> signInManager,
-        IConfiguration configuration)
+        IOptions<JwtOptions> jwtOptions)
     {
         var user = await userManager.FindByNameAsync(request.Username);
         var result = await signInManager.CheckPasswordSignInAsync(
@@ -121,7 +121,7 @@ public static class AuthEndpoints
                 title: "Invalid credentials");
         }
 
-        var token = GenerateJwtToken(user!, configuration);
+        var token = GenerateJwtToken(user!, jwtOptions.Value);
         return Results.Ok(new { token });
     }
 
@@ -162,10 +162,9 @@ public static class AuthEndpoints
         return Results.Ok(new { message = "Password changed successfully" });
     }
 
-    private static string GenerateJwtToken(IdentityUser user, IConfiguration configuration)
+    private static string GenerateJwtToken(IdentityUser user, JwtOptions options)
     {
-        var secret = configuration["Jwt:Secret"] ?? AuthConstants.DefaultJwtSecret;
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -176,7 +175,7 @@ public static class AuthEndpoints
 
         var token = new JwtSecurityToken(
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(AuthConstants.JwtExpirationDays),
+            expires: DateTime.UtcNow.AddDays(options.ExpirationDays),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

@@ -1,5 +1,7 @@
 @page "/settings"
+@using Microsoft.Extensions.Options
 @using Translarr.Core.Application.Constants
+@inject IOptions<AuthOptions> AuthOptions
 @inject SettingsApiService SettingsService
 @inject AuthApiService AuthService
 @inject IHxMessengerService Messenger
@@ -131,7 +133,7 @@
                     <div class="mb-3">
                         <label class="form-label">New Password</label>
                         <input type="password" class="form-control" @bind="_newPassword" />
-                        <div class="form-text">Minimum @AuthConstants.MinPasswordLength characters</div>
+                        <div class="form-text">Minimum @AuthOptions.Value.MinPasswordLength characters</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Confirm New Password</label>
@@ -237,9 +239,9 @@
             return;
         }
 
-        if (_newPassword.Length < AuthConstants.MinPasswordLength)
+        if (_newPassword.Length < AuthOptions.Value.MinPasswordLength)
         {
-            Messenger.AddError($"Password must be at least {AuthConstants.MinPasswordLength} characters");
+            Messenger.AddError($"Password must be at least {AuthOptions.Value.MinPasswordLength} characters");
             return;
         }
 
