@@ -25,29 +25,17 @@ public class Program
 
         builder.Services.AddScoped<ThemeService>();
 
-        // Auth services
+        // Auth - Blazor-level only, no HTTP auth middleware
         builder.Services.AddScoped<AuthCookieHolder>();
         builder.Services.AddScoped<AuthenticatedApiClientFactory>();
         builder.Services.AddScoped<AuthenticationStateProvider, TranslarrAuthStateProvider>();
-        builder.Services.AddAuthentication(options =>
-        {
-            // No real scheme needed - Blazor handles auth via AuthenticationStateProvider.
-            // But IAuthenticationService must be registered for authorization middleware
-            // triggered by MapPost endpoints and UseAntiforgery.
-            options.DefaultScheme = "BlazorDummy";
-        }).AddCookie("BlazorDummy", options =>
-        {
-            options.Events.OnRedirectToLogin = ctx =>
-            {
-                ctx.Response.StatusCode = 401;
-                return Task.CompletedTask;
-            };
-        });
-        builder.Services.AddAuthorizationCore();
+        builder.Services.AddCascadingAuthenticationState();
         builder.Services.AddHttpContextAccessor();
 
         // Data Protection - shared keys with API
-        var dpKeysPath = builder.Configuration["DataProtection:KeysPath"] ?? AuthConstants.DefaultDpKeysPath;
+        var dpKeysPath = builder.Configuration["DataProtection:KeysPath"]
+                         ?? (builder.Environment.IsDevelopment() ? Path.Combine(Path.GetTempPath(), "translarr-dp-keys") : AuthConstants.DefaultDpKeysPath);
+        Directory.CreateDirectory(dpKeysPath);
         builder.Services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
             .SetApplicationName(AuthConstants.DataProtectionAppName);
