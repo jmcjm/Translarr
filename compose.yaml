@@ -20,18 +20,18 @@ services:
     container_name: translarr-api
     restart: unless-stopped
     ports:
-      - "${API_PORT:-5000}:8080"
+      - "${API_PORT}:8080"
     environment:
       - ConnectionStrings__translarr-db=Data Source=/app/data/translarr.db
       - ConnectionStrings__translarr-auth=Data Source=/app/data/translarr-auth.db
       - DataProtection__KeysPath=/app/data/dp-keys
-      - Jwt__Secret=${JWT_SECRET:-TranslarrDevSecret_ChangeInProduction_AtLeast32Chars!!}
-      - MediaRootPath=/app/mediaroot
+      - Jwt__Secret=${JWT_SECRET}
+      - MediaRootPath=${MEDIA_ROOT_PATH}
       - ASPNETCORE_URLS=http://+:8080
       - ASPNETCORE_ENVIRONMENT=Production
     volumes:
       - translarr-db:/app/data
-      - ${MEDIA_ROOT_PATH:-./media}:/app/mediaroot:rw,z
+      - ${MEDIA_ROOT_PATH}:/app/mediaroot:rw,z
     user: "6969:6969"
     depends_on:
       translarr-db-init:
@@ -42,7 +42,7 @@ services:
     container_name: translarr-web
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-5001}:8080"
+      - "${WEB_PORT}:8080"
     environment:
       - ApiBaseUrl=http://translarr-api:8080
       - ASPNETCORE_URLS=http://+:8080
