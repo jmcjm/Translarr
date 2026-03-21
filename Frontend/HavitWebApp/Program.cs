@@ -29,7 +29,12 @@ public class Program
         builder.Services.AddScoped<AuthCookieHolder>();
         builder.Services.AddScoped<AuthenticatedApiClientFactory>();
         builder.Services.AddScoped<AuthenticationStateProvider, TranslarrAuthStateProvider>();
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(options =>
+        {
+            options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+        });
         builder.Services.AddHttpContextAccessor();
 
         // Data Protection - shared keys with API
