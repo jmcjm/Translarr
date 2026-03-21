@@ -31,10 +31,6 @@ public static class AuthEndpoints
             .AllowAnonymous()
             .RequireRateLimiting("login");
 
-        group.MapPost("/logout", Logout)
-            .WithName("Logout")
-            .AllowAnonymous();
-
         group.MapGet("/me", GetCurrentUser)
             .WithName("GetCurrentUser")
             .RequireAuthorization();
@@ -125,11 +121,7 @@ public static class AuthEndpoints
         return Results.Ok(new { token });
     }
 
-    private static IResult Logout()
-    {
-        // JWT is stateless - client just drops the token
-        return Results.Ok(new { message = "Logged out" });
-    }
+
 
     private static IResult GetCurrentUser(ClaimsPrincipal user)
     {
