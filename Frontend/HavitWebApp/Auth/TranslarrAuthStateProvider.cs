@@ -1,25 +1,39 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
+using Translarr.Core.Application.Constants;
 
 namespace Translarr.Frontend.HavitWebApp.Auth;
 
 public class TranslarrAuthStateProvider(
     AuthenticatedApiClientFactory apiClientFactory,
     AuthCookieHolder cookieHolder,
+    IHttpContextAccessor httpContextAccessor,
     ILogger<TranslarrAuthStateProvider> logger) : AuthenticationStateProvider
 {
     private static AuthenticationState AnonymousState =>
         new(new ClaimsPrincipal(new ClaimsIdentity()));
 
+    private bool _initialized;
+
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        logger.LogInformation("GetAuthenticationStateAsync called, cookieValue={HasCookie}",
-            !string.IsNullOrEmpty(cookieHolder.CookieValue));
+        // On first call (SSR render), HttpContext is available - grab cookie directly
+        if (!_initialized)
+        {
+            _initialized = true;
+            var httpContext = httpContextAccessor.HttpContext;
+            if (httpContext != null &&
+                httpContext.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var cookie) &&
+                !string.IsNullOrEmpty(cookie))
+            {
+                cookieHolder.CookieValue = cookie;
+                logger.LogInformation("Cookie captured from HttpContext on first call, length={Length}", cookie.Length);
+            }
+        }
 
         if (string.IsNullOrEmpty(cookieHolder.CookieValue))
         {
-            logger.LogInformation("No cookie in holder, returning anonymous");
             return AnonymousState;
         }
 
@@ -27,8 +41,6 @@ public class TranslarrAuthStateProvider(
         {
             var client = apiClientFactory.CreateClient();
             var response = await client.GetAsync("/api/auth/me");
-
-            logger.LogInformation("API /auth/me returned {StatusCode}", (int)response.StatusCode);
 
             if (!response.IsSuccessStatusCode)
             {

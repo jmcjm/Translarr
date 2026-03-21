@@ -5,7 +5,6 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // Check if setup is needed before redirecting to login
         try
         {
             var client = HttpClientFactory.CreateClient("TranslarrApiDirect");
@@ -15,6 +14,11 @@
                 NavigationManager.NavigateTo("/setup", forceLoad: true);
                 return;
             }
+        }
+        catch (NavigationException)
+        {
+            // NavigateTo with forceLoad throws NavigationException during SSR - that's expected
+            return;
         }
         catch (Exception ex)
         {
