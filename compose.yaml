@@ -9,7 +9,7 @@ services:
         [ ! -f /app/data/$$f ] && touch /app/data/$$f && echo \"$$f created\" || echo \"$$f exists\";
       done &&
       mkdir -p /app/data/dp-keys &&
-      chown -R 1000:1000 /app/data &&
+      chown -R 6969:6969 /app/data &&
       chmod -R 755 /app/data &&
       chmod 666 /app/data/*.db &&
       echo 'Permissions set'"
@@ -31,7 +31,7 @@ services:
     volumes:
       - translarr-db:/app/data
       - ${MEDIA_ROOT_PATH:-./media}:/app/mediaroot:rw,z
-    user: "1000:1000"
+    user: "6969:6969"
     depends_on:
       translarr-db-init:
         condition: service_completed_successfully
