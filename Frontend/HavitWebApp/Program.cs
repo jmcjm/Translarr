@@ -1,4 +1,8 @@
 using Havit.Blazor.Components.Web;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Translarr.Core.Application.Constants;
+using Translarr.Frontend.HavitWebApp.Auth;
 using Translarr.Frontend.HavitWebApp.Components;
 using Translarr.Frontend.HavitWebApp.Services;
 using Translarr.ServiceDefaults;
@@ -13,47 +17,77 @@ public class Program
 
         builder.AddServiceDefaults();
 
-        // Add Blazor services
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
-        // Add Havit.Blazor services
         builder.Services.AddHxServices();
         builder.Services.AddHxMessenger();
 
-        // Add Theme Service
         builder.Services.AddScoped<ThemeService>();
 
-        // Configure HttpClient for API communication
-        // In Docker Compose: uses ApiBaseUrl from environment variable
-        // With Aspire: uses service discovery (https+http://Translarr-Api)
+        // Auth services
+        builder.Services.AddScoped<AuthCookieHolder>();
+        builder.Services.AddScoped<AuthenticatedApiClientFactory>();
+        builder.Services.AddScoped<AuthenticationStateProvider, TranslarrAuthStateProvider>();
+        builder.Services.AddAuthorization();
+        builder.Services.AddHttpContextAccessor();
+
+        // Data Protection - shared keys with API
+        var dpKeysPath = builder.Configuration["DataProtection:KeysPath"] ?? AuthConstants.DefaultDpKeysPath;
+        builder.Services.AddDataProtection()
+            .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
+            .SetApplicationName(AuthConstants.DataProtectionAppName);
+
+        // HttpClient for API - cookie is added by AuthenticatedApiClientFactory (scoped, circuit-aware)
         var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https+http://Translarr-Api";
         builder.Services.AddHttpClient("TranslarrApi", client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
         });
 
-        // Register API services
+        // HttpClient without cookie handling - for login/setup/logout proxy endpoints
+        builder.Services.AddHttpClient("TranslarrApiDirect", client =>
+        {
+            client.BaseAddress = new Uri(apiBaseUrl);
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            UseCookies = false
+        });
+
+        // API services
         builder.Services.AddScoped<LibraryApiService>();
         builder.Services.AddScoped<TranslationApiService>();
         builder.Services.AddScoped<SettingsApiService>();
         builder.Services.AddScoped<StatsApiService>();
         builder.Services.AddScoped<SeriesWatchApiService>();
+        builder.Services.AddScoped<AuthApiService>();
 
         var app = builder.Build();
 
         app.MapDefaultEndpoints();
 
-        // Configure the HTTP request pipeline
         if (!app.Environment.IsDevelopment())
         {
             app.UseExceptionHandler("/Error");
-            app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
         app.UseStaticFiles();
+
+        // Capture auth cookie from browser request into circuit-scoped holder
+        app.Use(async (context, next) =>
+        {
+            var cookieHolder = context.RequestServices.GetService<AuthCookieHolder>();
+            if (cookieHolder != null &&
+                context.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var cookieValue))
+            {
+                cookieHolder.CookieValue = cookieValue;
+            }
+            await next();
+        });
+
         app.UseAntiforgery();
+
+        app.MapAccountEndpoints();
 
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
