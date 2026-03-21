@@ -26,7 +26,7 @@ services:
       - ConnectionStrings__translarr-auth=Data Source=/app/data/translarr-auth.db
       - DataProtection__KeysPath=/app/data/dp-keys
       - Jwt__Secret=${JWT_SECRET}
-      - MediaRootPath=${MEDIA_ROOT_PATH}
+      - MediaRootPath=/app/mediaroot
       - ASPNETCORE_URLS=http://+:8080
       - ASPNETCORE_ENVIRONMENT=Production
     volumes:
