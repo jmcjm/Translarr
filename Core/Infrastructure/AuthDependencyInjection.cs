@@ -64,7 +64,9 @@ public static class AuthDependencyInjection
         });
 
         // Data Protection - persist keys so cookies survive container restarts
-        var dpKeysPath = configuration["DataProtection:KeysPath"] ?? AuthConstants.DefaultDpKeysPath;
+        var dpKeysPath = configuration["DataProtection:KeysPath"]
+                         ?? (Directory.Exists("/app") ? AuthConstants.DefaultDpKeysPath : Path.Combine(Path.GetTempPath(), "translarr-dp-keys"));
+        Directory.CreateDirectory(dpKeysPath);
         services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
             .SetApplicationName(AuthConstants.DataProtectionAppName);
