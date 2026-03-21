@@ -1,20 +1,21 @@
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Models;
+using Translarr.Frontend.HavitWebApp.Auth;
 
 namespace Translarr.Frontend.HavitWebApp.Services;
 
-public class LibraryApiService(IHttpClientFactory httpClientFactory)
+public class LibraryApiService(AuthenticatedApiClientFactory apiClientFactory)
 {
     public async Task<bool> StartScanAsync()
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
         var response = await client.PostAsync("/api/library/scan", null);
         return response.IsSuccessStatusCode;
     }
 
     public async Task<ScanStatus?> GetScanStatusAsync()
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
         var response = await client.GetAsync("/api/library/scan/status");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ScanStatus>();
@@ -28,7 +29,7 @@ public class LibraryApiService(IHttpClientFactory httpClientFactory)
         bool? alreadyHas = null,
         string? search = null)
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
 
         var queryParams = new List<string>
         {
@@ -56,7 +57,7 @@ public class LibraryApiService(IHttpClientFactory httpClientFactory)
 
     public async Task<SubtitleEntryDto?> GetEntryByIdAsync(int id)
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
         var response = await client.GetAsync($"/api/library/entries/{id}");
 
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -68,7 +69,7 @@ public class LibraryApiService(IHttpClientFactory httpClientFactory)
 
     public async Task<SubtitleEntryDto?> UpdateWantedStatusAsync(int id, bool isWanted)
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
         var response = await client.PatchAsJsonAsync($"/api/library/entries/{id}/wanted",
             new UpdateWantedRequest(isWanted));
 

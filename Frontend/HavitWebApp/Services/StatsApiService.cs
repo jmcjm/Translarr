@@ -1,16 +1,17 @@
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Models;
+using Translarr.Frontend.HavitWebApp.Auth;
 
 namespace Translarr.Frontend.HavitWebApp.Services;
 
-public class StatsApiService(IHttpClientFactory httpClientFactory)
+public class StatsApiService(AuthenticatedApiClientFactory apiClientFactory)
 {
     public async Task<List<ApiUsageDto>?> GetApiUsageStatsAsync(
         DateTime? from = null,
         DateTime? to = null,
         string? model = null)
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
 
         var queryParams = new List<string>();
 
@@ -31,7 +32,7 @@ public class StatsApiService(IHttpClientFactory httpClientFactory)
 
     public async Task<LibraryStats?> GetLibraryStatsAsync()
     {
-        var client = httpClientFactory.CreateClient("TranslarrApi");
+        var client = apiClientFactory.CreateClient();
         var response = await client.GetAsync("/api/stats/library-stats");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<LibraryStats>();

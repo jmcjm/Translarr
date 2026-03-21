@@ -1,0 +1,28 @@
+@inject NavigationManager NavigationManager
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<RedirectToLogin> Logger
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if setup is needed before redirecting to login
+        try
+        {
+            var client = HttpClientFactory.CreateClient("TranslarrApiDirect");
+            var response = await client.GetFromJsonAsync<SetupStatus>("/api/auth/setup/status");
+            if (response?.NeedsSetup == true)
+            {
+                NavigationManager.NavigateTo("/setup", forceLoad: true);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to check setup status, falling through to login");
+        }
+
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+
+    private record SetupStatus(bool NeedsSetup);
+}
