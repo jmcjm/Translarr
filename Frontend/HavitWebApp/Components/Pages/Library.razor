@@ -27,10 +27,12 @@
             </div>
             <div class="col-12 col-md-3">
                 <label class="form-label">Status</label>
-                <select class="form-select" @bind="_filterProcessed" @bind:after="ApplyFilters">
+                <select class="form-select" @bind="_filterStatus" @bind:after="ApplyFilters">
                     <option value="">All</option>
-                    <option value="true">Processed</option>
-                    <option value="false">Not Processed</option>
+                    <option value="processed">Processed</option>
+                    <option value="pending">Pending</option>
+                    <option value="error">Error</option>
+                    <option value="bitmap">Bitmap OCR</option>
                 </select>
             </div>
             <div class="col-12 col-md-3">
@@ -89,9 +91,21 @@
                         {
                             <HxBadge Color="ThemeColor.Danger" title="@entry.ErrorMessage">Error</HxBadge>
                         }
+                        else if (entry.HasBitmapSubtitlesOnly)
+                        {
+                            <HxBadge Color="ThemeColor.Info">Bitmap OCR</HxBadge>
+                        }
+                        else if (entry.IsWanted)
+                        {
+                            <HxBadge Color="ThemeColor.Warning">Pending</HxBadge>
+                        }
+                        else if (entry.AlreadyHad)
+                        {
+                            <span class="text-muted">Has Subtitles</span>
+                        }
                         else
                         {
-                            <HxBadge Color="ThemeColor.Secondary">Pending</HxBadge>
+                            <HxBadge Color="ThemeColor.Secondary">Not Wanted</HxBadge>
                         }
                     </ItemTemplate>
                 </HxGridColumn>
@@ -127,15 +141,26 @@
 
                 <HxGridColumn HeaderText="Actions">
                     <ItemTemplate Context="entry">
-                        @if (!string.IsNullOrEmpty(entry.ErrorMessage))
-                        {
-                            <HxButton Color="ThemeColor.Info"
-                                      Size="ButtonSize.Small"
-                                      OnClick="@(() => ShowErrorDetails(entry.ErrorMessage))"
-                                      title="View error details">
-                                <HxIcon Icon="BootstrapIcon.InfoCircle" />
-                            </HxButton>
-                        }
+                        <div class="d-flex gap-1">
+                            @if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                            {
+                                <HxButton Color="ThemeColor.Info"
+                                          Size="ButtonSize.Small"
+                                          OnClick="@(() => ShowErrorDetails(entry.ErrorMessage))"
+                                          title="View error details">
+                                    <HxIcon Icon="BootstrapIcon.InfoCircle" />
+                                </HxButton>
+                            }
+                            @if (entry.IsProcessed || !string.IsNullOrEmpty(entry.ErrorMessage))
+                            {
+                                <HxButton Color="ThemeColor.Warning"
+                                          Size="ButtonSize.Small"
+                                          OnClick="@(async () => await RetryEntry(entry.Id))"
+                                          title="Retry translation">
+                                    <HxIcon Icon="BootstrapIcon.ArrowRepeat" />
+                                </HxButton>
+                            }
+                        </div>
                     </ItemTemplate>
                 </HxGridColumn>
             </Columns>
@@ -172,7 +197,7 @@
     private HxGrid<SubtitleEntryDto> _gridRef = null!;
     private int _pageSize = 50;
     private string? _searchText;
-    private string? _filterProcessed;
+    private string? _filterStatus;
     private string? _filterWanted;
     private string? _filterAlreadyHas;
     private Timer? _debounceTimer;
@@ -185,18 +210,36 @@
             // Calculate page from StartIndex and Count (as per Havit docs examples)
             var page = request.StartIndex / request.Count + 1;
 
+            // Map status filter to API query params
+            bool? isProcessedFilter = _filterStatus switch
+            {
+                "processed" => true,
+                "pending" or "error" or "bitmap" => false,
+                _ => null
+            };
+
             var result = await LibraryService.GetEntriesAsync(
                 page: page!.Value,
                 pageSize: request.Count!.Value,
-                isProcessed: ParseBoolFilter(_filterProcessed),
+                isProcessed: isProcessedFilter,
                 isWanted: ParseBoolFilter(_filterWanted),
                 alreadyHas: ParseBoolFilter(_filterAlreadyHas),
                 search: _searchText
             );
 
+            var items = result?.Items ?? [];
+
+            // Client-side sub-filtering for specific status types
+            if (_filterStatus == "error")
+                items = items.Where(e => !string.IsNullOrEmpty(e.ErrorMessage)).ToList();
+            else if (_filterStatus == "bitmap")
+                items = items.Where(e => e.HasBitmapSubtitlesOnly).ToList();
+            else if (_filterStatus == "pending")
+                items = items.Where(e => e.IsWanted && !e.HasBitmapSubtitlesOnly && string.IsNullOrEmpty(e.ErrorMessage)).ToList();
+
             return new GridDataProviderResult<SubtitleEntryDto>
             {
-                Data = result?.Items ?? [],
+                Data = items,
                 TotalCount = result?.TotalCount ?? 0
             };
         }
@@ -256,6 +299,20 @@
     private async Task ApplyFilters()
     {
         await _gridRef.RefreshDataAsync();
+    }
+
+    private async Task RetryEntry(int id)
+    {
+        try
+        {
+            await LibraryService.ForceProcessAsync(id, true);
+            Messenger.AddInformation("Entry queued for retry");
+            await _gridRef.RefreshDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Messenger.AddError($"Error: {ex.Message}");
+        }
     }
 
     private void ShowErrorDetails(string errorMessage)
