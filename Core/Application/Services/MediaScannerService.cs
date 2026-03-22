@@ -99,7 +99,7 @@ public class MediaScannerService(
                         FileName = Path.GetFileName(filePath),
                         SeriesNumber = seriesName,
                         SeasonNumber = seasonName,
-                        Library = ""
+                        Library = pathParts.Length >= 2 ? pathParts[0] : "Uncategorized"
                     });
                 }
                 else
@@ -115,7 +115,7 @@ public class MediaScannerService(
                         FileName = Path.GetFileName(filePath),
                         SeriesNumber = seriesName,
                         SeasonNumber = seasonName,
-                        Library = ""
+                        Library = pathParts[0]
                     });
                 }
             }
@@ -156,6 +156,7 @@ public class MediaScannerService(
                         FileName = videoFile.FileName,
                         Series = videoFile.SeriesNumber,
                         Season = videoFile.SeasonNumber,
+                        Library = videoFile.Library,
                         IsProcessed = false,
                         IsWanted = shouldAutoMarkWanted,
                         ForceProcess = false,
@@ -172,6 +173,7 @@ public class MediaScannerService(
                     var hadSubtitles = existingEntry.AlreadyHad;
                     existingEntry.AlreadyHad = alreadyHas;
                     existingEntry.LastScanned = DateTime.UtcNow;
+                    existingEntry.Library = videoFile.Library;
 
                     // If subtitles disappeared, reset processing status
                     if (hadSubtitles && !alreadyHas)
