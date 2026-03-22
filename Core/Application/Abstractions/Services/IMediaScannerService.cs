@@ -4,6 +4,7 @@ namespace Translarr.Core.Application.Abstractions.Services;
 
 public interface IMediaScannerService
 {
-    Task<ScanResultDto> ScanLibraryAsync();
+    Task<ScanResultDto> ScanLibraryAsync(
+        Action<ScanProgressUpdate>? onProgressUpdate = null,
+        CancellationToken cancellationToken = default);
 }
-
