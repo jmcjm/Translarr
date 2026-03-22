@@ -229,7 +229,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
                     TotalFiles = s.TotalFiles,
                     WantedFiles = s.WantedFiles,
                     ProcessedFiles = s.ProcessedFiles
-                }).ToList()
+                }).OrderBy(s => NaturalSortKey(s.SeasonName)).ToList()
             })
             .OrderBy(s => s.SeriesName)
             .ToList();
