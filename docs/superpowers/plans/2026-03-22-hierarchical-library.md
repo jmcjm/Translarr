@@ -57,6 +57,7 @@
 | `Core/Application/Services/MediaScannerService.cs` | Extract `Library` from path in `ScanFilesystemAsync` + `AnalyzeVideoFilesAsync` |
 | `Core/Api/Endpoints/LibraryEndpoints.cs` | Add 3 new browse endpoints, modify bulk wanted |
 | `Frontend/HavitWebApp/Services/LibraryApiService.cs` | Add 3 new methods |
+| `Frontend/HavitWebApp/Services/SeriesWatchApiService.cs` | Add optional `library` param to `BulkSetWantedAsync` |
 | `Frontend/HavitWebApp/Components/Layout/NavMenu.razor` | Dynamic library submenu |
 | `Frontend/HavitWebApp/Components/Pages/Library.razor` | Change route to `/library/all` |
 | `Frontend/HavitWebApp/Components/Pages/SeriesManagement.razor` | Delete this file |
@@ -245,7 +246,16 @@ Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWa
 
 - [ ] **Step 6: Implement new methods in `SubtitleEntryRepository.cs`**
 
-Add before `MapToDto` method. Note: uses `context.SubtitleEntries` (NOT `_context.Set<>()`):
+Add before `MapToDto` method. Note: uses `context.SubtitleEntries` (NOT `_context.Set<>()`).
+
+For natural season sorting, add a static helper method in the repository:
+
+```csharp
+private static string NaturalSortKey(string value)
+    => System.Text.RegularExpressions.Regex.Replace(value, @"\d+", m => m.Value.PadLeft(10, '0'));
+```
+
+New methods:
 
 ```csharp
 public async Task<List<string>> GetDistinctLibrariesAsync()
@@ -289,7 +299,7 @@ public async Task<List<SeriesGroupDto>> GetSeriesGroupsByLibraryAsync(string lib
                 TotalFiles = s.TotalFiles,
                 WantedFiles = s.WantedFiles,
                 ProcessedFiles = s.ProcessedFiles
-            }).OrderBy(s => s.SeasonName).ToList()
+            }).OrderBy(s => NaturalSortKey(s.SeasonName)).ToList()
         })
         .OrderBy(s => s.SeriesName)
         .ToList();
@@ -403,9 +413,10 @@ git commit -m "feat: extract Library from path in media scanner"
 
 - [ ] **Step 1: Add new methods to `ILibraryService.cs`**
 
+Note: No `GetSeriesByLibraryAsync` here — the `/browse/series` endpoint routes through `ISeriesWatchService.GetSeriesGroupsWithWatchStatusAsync(library)` directly to get watch-status-enriched data.
+
 ```csharp
 Task<ErrorOr<List<string>>> GetLibrariesAsync();
-Task<ErrorOr<List<SeriesGroupDto>>> GetSeriesByLibraryAsync(string library);
 Task<ErrorOr<SeriesDetailDto>> GetSeriesDetailAsync(string library, string series);
 ```
 
@@ -436,15 +447,6 @@ public async Task<ErrorOr<List<string>>> GetLibrariesAsync()
     return libraries;
 }
 
-public async Task<ErrorOr<List<SeriesGroupDto>>> GetSeriesByLibraryAsync(string library)
-{
-    if (string.IsNullOrWhiteSpace(library))
-        return Error.Validation("LibraryService.GetSeriesByLibraryAsync", "Library name is required.");
-
-    var groups = await repository.GetSeriesGroupsByLibraryAsync(library);
-    return groups;
-}
-
 public async Task<ErrorOr<SeriesDetailDto>> GetSeriesDetailAsync(string library, string series)
 {
     if (string.IsNullOrWhiteSpace(library))
@@ -459,7 +461,8 @@ public async Task<ErrorOr<SeriesDetailDto>> GetSeriesDetailAsync(string library,
     var isSeriesWatched = await seriesWatchService.ShouldAutoMarkWantedAsync(series, "");
 
     var seasons = new List<SeasonDetailDto>();
-    foreach (var seasonGroup in entries.GroupBy(e => e.Season).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+    foreach (var seasonGroup in entries.GroupBy(e => e.Season)
+        .OrderBy(g => System.Text.RegularExpressions.Regex.Replace(g.Key, @"\d+", m => m.Value.PadLeft(10, '0'))))
     {
         var isSeasonWatched = isSeriesWatched ||
             await seriesWatchService.ShouldAutoMarkWantedAsync(series, seasonGroup.Key);
@@ -629,6 +632,8 @@ git commit -m "feat: add /api/library/browse endpoints for hierarchical navigati
 - [ ] **Step 1: Create `SlugHelper.cs`**
 
 ```csharp
+using System.Text.RegularExpressions;
+
 namespace Translarr.Frontend.HavitWebApp.Helpers;
 
 public static class SlugHelper
@@ -644,10 +649,22 @@ public static class SlugHelper
     /// <summary>
     /// Resolves a slug back to the original name from a list of known names.
     /// Returns the slug itself if no match found.
+    /// Note: slug collisions are theoretically possible (e.g. "TV Shows" and "TV-Shows")
+    /// but extremely unlikely in real media folder names. FirstOrDefault picks first match.
+    /// If collisions become a real issue, add -2/-3 suffix dedup here.
     /// </summary>
     public static string FromSlug(string slug, IEnumerable<string> knownNames)
     {
         return knownNames.FirstOrDefault(n => ToSlug(n) == slug) ?? slug;
+    }
+
+    /// <summary>
+    /// Natural sort key: "Season 2" sorts before "Season 10".
+    /// Pads numeric segments to 10 digits for lexicographic comparison.
+    /// </summary>
+    public static string NaturalSortKey(string value)
+    {
+        return Regex.Replace(value, @"\d+", m => m.Value.PadLeft(10, '0'));
     }
 }
 ```
@@ -686,12 +703,42 @@ public async Task<SeriesDetailDto?> GetSeriesDetailAsync(string libraryName, str
 }
 ```
 
-- [ ] **Step 3: Verify build + Commit**
+- [ ] **Step 3: Add `library` param to `SeriesWatchApiService.BulkSetWantedAsync`**
+
+In `SeriesWatchApiService.cs` (line 67), change the signature and add library query param:
+
+```csharp
+public async Task<int> BulkSetWantedAsync(string series, string? season, bool wanted, string? library = null)
+{
+    var client = apiClientFactory.CreateClient();
+
+    var queryParams = new List<string>
+    {
+        $"series={Uri.EscapeDataString(series)}",
+        $"wanted={wanted}"
+    };
+
+    if (season != null)
+        queryParams.Add($"season={Uri.EscapeDataString(season)}");
+
+    if (library != null)
+        queryParams.Add($"library={Uri.EscapeDataString(library)}");
+
+    var queryString = string.Join("&", queryParams);
+    var response = await client.PutAsync($"/api/library/bulk/wanted?{queryString}", null);
+    response.EnsureSuccessStatusCode();
+
+    var result = await response.Content.ReadFromJsonAsync<BulkUpdateResult>();
+    return result?.UpdatedCount ?? 0;
+}
+```
+
+- [ ] **Step 4: Verify build + Commit**
 
 ```bash
 dotnet build --configuration Release
-git add Frontend/HavitWebApp/Helpers/ Frontend/HavitWebApp/Services/LibraryApiService.cs
-git commit -m "feat: add SlugHelper and library browse methods to LibraryApiService"
+git add Frontend/HavitWebApp/Helpers/ Frontend/HavitWebApp/Services/
+git commit -m "feat: add SlugHelper, library browse API methods, library-scoped bulk wanted"
 ```
 
 ---
@@ -709,6 +756,8 @@ Replace the Library and Series Management `<NavLink>`s with:
 
 ```razor
 @inject LibraryApiService LibraryApiService
+@inject NavigationManager NavigationManager
+@implements IDisposable
 @using Translarr.Frontend.HavitWebApp.Helpers
 ```
 
@@ -742,12 +791,14 @@ Remove the old Series Management nav link. Add `@code` block:
     protected override async Task OnInitializedAsync()
     {
         await LoadLibraries();
+        NavigationManager.LocationChanged += OnLocationChanged;
     }
 
-    public async Task RefreshLibraries()
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
+        // Re-fetch libraries on navigation (picks up new libraries after scan without full page reload)
         await LoadLibraries();
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadLibraries()
@@ -760,6 +811,11 @@ Remove the old Series Management nav link. Add `@code` block:
         {
             _libraries = null;
         }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
     }
 }
 ```
@@ -1162,13 +1218,13 @@ else
 
     private async Task BulkMarkWanted(bool wanted)
     {
-        await SeriesWatchApiService.BulkSetWantedAsync(_seriesName, null, wanted);
+        await SeriesWatchApiService.BulkSetWantedAsync(_seriesName, null, wanted, _libraryName);
         await LoadData();
     }
 
     private async Task BulkMarkSeasonWanted(string seasonName, bool wanted)
     {
-        await SeriesWatchApiService.BulkSetWantedAsync(_seriesName, seasonName, wanted);
+        await SeriesWatchApiService.BulkSetWantedAsync(_seriesName, seasonName, wanted, _libraryName);
         await LoadData();
     }
 
