@@ -65,6 +65,21 @@ public interface ILibraryService
     /// <param name="seriesName">The name of the series.</param>
     /// <param name="seasonName">The name of the season (null to update entire series).</param>
     /// <param name="isWanted">The new wanted status.</param>
+    /// <param name="library">Optional library name to scope the update.</param>
     /// <returns>The task result contains the number of entries updated, or an error.</returns>
-    Task<ErrorOr<int>> BulkSetWantedAsync(string seriesName, string? seasonName, bool isWanted);
+    Task<ErrorOr<int>> BulkSetWantedAsync(string seriesName, string? seasonName, bool isWanted, string? library = null);
+
+    /// <summary>
+    /// Retrieves all distinct library names from the subtitle entries.
+    /// </summary>
+    /// <returns>Sorted list of distinct library names.</returns>
+    Task<ErrorOr<List<string>>> GetLibrariesAsync();
+
+    /// <summary>
+    /// Retrieves detailed series information including seasons and entries for a given library and series.
+    /// </summary>
+    /// <param name="library">The library name.</param>
+    /// <param name="series">The series name.</param>
+    /// <returns>The task result contains a <see cref="SeriesDetailDto"/> with season and file details, or an error.</returns>
+    Task<ErrorOr<SeriesDetailDto>> GetSeriesDetailAsync(string library, string series);
 }
