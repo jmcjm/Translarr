@@ -48,6 +48,47 @@ public partial class OpenAiSubtitleTranslator(ILogger<OpenAiSubtitleTranslator> 
         return text;
     }
 
+    public async Task<string> TranslateWithImagesAsync(string prompt, List<byte[]> images, LlmSettingsDto settings)
+    {
+        if (string.IsNullOrEmpty(settings.ApiKey))
+            throw new InvalidOperationException("LLM API key is not configured");
+
+        var client = new OpenAIClient(
+            new ApiKeyCredential(settings.ApiKey),
+            new OpenAIClientOptions { Endpoint = new Uri(settings.BaseUrl) });
+
+        var chatClient = client.GetChatClient(settings.Model);
+
+        logger.LogInformation("Sending OCR request with {count} images to {model}", images.Count, settings.Model);
+
+        var parts = new List<ChatMessageContentPart>();
+        parts.Add(ChatMessageContentPart.CreateTextPart(prompt));
+
+        foreach (var imageBytes in images)
+        {
+            var binaryData = BinaryData.FromBytes(imageBytes);
+            parts.Add(ChatMessageContentPart.CreateImagePart(binaryData, "image/png"));
+        }
+
+        var response = await chatClient.CompleteChatAsync(
+            [new UserChatMessage(parts)],
+            new ChatCompletionOptions { Temperature = settings.Temperature, MaxOutputTokenCount = settings.MaxOutputTokens });
+
+        if (response.Value.FinishReason == ChatFinishReason.ContentFilter)
+        {
+            throw new InvalidOperationException("LLM blocked this request due to content filtering policy.");
+        }
+
+        var text = response.Value.Content[0].Text;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            throw new InvalidOperationException("LLM returned empty response");
+        }
+
+        return MarkdownCodeBlockRegex().Replace(text, "").Trim();
+    }
+
     [GeneratedRegex(@"^```[\w-]*\n|```$", RegexOptions.Multiline)]
     private static partial Regex MarkdownCodeBlockRegex();
 }
