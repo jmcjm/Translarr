@@ -62,6 +62,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             throw new InvalidOperationException($"SubtitleEntry with Id {entry.Id} not found");
         }
 
+        dao.Library = entry.Library;
         dao.Series = entry.Series;
         dao.Season = entry.Season;
         dao.FileName = entry.FileName;
@@ -182,9 +183,12 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
-    public async Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted)
+    public async Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted, string? library = null)
     {
         var query = context.SubtitleEntries.Where(e => e.Series == seriesName);
+
+        if (library != null)
+            query = query.Where(e => e.Library == library);
 
         if (seasonName != null)
             query = query.Where(e => e.Season == seasonName);
@@ -233,11 +237,77 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         return seriesGroups;
     }
 
+    /// <inheritdoc />
+    public async Task<List<string>> GetDistinctLibrariesAsync()
+    {
+        return await context.SubtitleEntries
+            .AsNoTracking()
+            .Select(e => e.Library)
+            .Where(l => l != "")
+            .Distinct()
+            .OrderBy(l => l)
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SeriesGroupDto>> GetSeriesGroupsByLibraryAsync(string library)
+    {
+        var groupedData = await context.SubtitleEntries
+            .AsNoTracking()
+            .Where(e => e.Library == library)
+            .GroupBy(e => new { e.Series, e.Season })
+            .Select(g => new
+            {
+                g.Key.Series,
+                g.Key.Season,
+                TotalFiles = g.Count(),
+                WantedFiles = g.Count(e => e.IsWanted),
+                ProcessedFiles = g.Count(e => e.IsProcessed)
+            })
+            .ToListAsync();
+
+        return groupedData
+            .GroupBy(g => g.Series)
+            .Select(sg => new SeriesGroupDto
+            {
+                SeriesName = sg.Key,
+                TotalFiles = sg.Sum(s => s.TotalFiles),
+                WantedFiles = sg.Sum(s => s.WantedFiles),
+                ProcessedFiles = sg.Sum(s => s.ProcessedFiles),
+                Seasons = sg.Select(s => new SeasonGroupDto
+                {
+                    SeasonName = s.Season,
+                    TotalFiles = s.TotalFiles,
+                    WantedFiles = s.WantedFiles,
+                    ProcessedFiles = s.ProcessedFiles
+                }).OrderBy(s => NaturalSortKey(s.SeasonName)).ToList()
+            })
+            .OrderBy(s => s.SeriesName)
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SubtitleEntryDto>> GetEntriesByLibraryAndSeriesAsync(string library, string series)
+    {
+        var entries = await context.SubtitleEntries
+            .AsNoTracking()
+            .Where(e => e.Library == library && e.Series == series)
+            .OrderBy(e => e.Season)
+            .ThenBy(e => e.FileName)
+            .ToListAsync();
+
+        return entries.Select(MapToDto).ToList();
+    }
+
+    private static string NaturalSortKey(string value)
+        => System.Text.RegularExpressions.Regex.Replace(value, @"\d+", m => m.Value.PadLeft(10, '0'));
+
     private static SubtitleEntryDto MapToDto(SubtitleEntryDao dao)
     {
         return new SubtitleEntryDto
         {
             Id = dao.Id,
+            Library = dao.Library,
             Series = dao.Series,
             Season = dao.Season,
             FileName = dao.FileName,
@@ -258,6 +328,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         return new SubtitleEntryDao
         {
             Id = dto.Id,
+            Library = dto.Library,
             Series = dto.Series,
             Season = dto.Season,
             FileName = dto.FileName,
