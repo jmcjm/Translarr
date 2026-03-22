@@ -3,6 +3,11 @@
 @inject LibraryApiService LibraryService
 @inject TranslationApiService TranslationService
 @inject IHxMessengerService Messenger
+@using Microsoft.AspNetCore.SignalR.Client
+@using Translarr.Frontend.HavitWebApp.Auth
+@inject AuthCookieHolder AuthCookieHolder
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
 
 <PageTitle>Dashboard - Translarr</PageTitle>
 
@@ -225,25 +230,62 @@
     private bool _isCancelling;
     private bool _isTranslatingBitmap;
     private bool _isCancellingBitmap;
-    private Timer? _statusTimer;
+    private HubConnection? _hubConnection;
+    private CancellationTokenSource? _hubCts;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadStats();
-        await CheckTranslationStatus();
-        await CheckScanStatus();
-        await CheckBitmapTranslationStatus();
 
-        // Start polling for translation and scan status
-        _statusTimer = new Timer(_ =>
-        {
-            InvokeAsync(async () =>
+        var apiBaseUrl = Configuration["ApiBaseUrl"] ?? "https+http://Translarr-Api";
+        _hubCts = new CancellationTokenSource();
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl($"{apiBaseUrl}/hubs/progress", options =>
             {
-                await CheckTranslationStatus();
-                await CheckScanStatus();
-                await CheckBitmapTranslationStatus();
-            }).GetAwaiter().GetResult();
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+                options.AccessTokenProvider = () => Task.FromResult(AuthCookieHolder.CookieValue);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<TranslationStatus>("TranslationProgress", status =>
+        {
+            var wasRunning = _translationStatus?.IsRunning ?? false;
+            _translationStatus = status;
+            if (wasRunning && !status.IsRunning && status.Result is not null)
+                _ = InvokeAsync(LoadStats);
+            _ = InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<TranslationStatus>("BitmapProgress", status =>
+        {
+            var wasRunning = _bitmapTranslationStatus?.IsRunning ?? false;
+            _bitmapTranslationStatus = status;
+            if (wasRunning && !status.IsRunning && status.Result is not null)
+                _ = InvokeAsync(LoadStats);
+            _ = InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<ScanStatus>("ScanProgress", status =>
+        {
+            var wasRunning = _scanStatus?.IsRunning ?? false;
+            _scanStatus = status;
+            if (wasRunning && !status.IsRunning && status.Result is not null)
+                _ = InvokeAsync(LoadStats);
+            _ = InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.Reconnected += async _ => await LoadCurrentStatus();
+
+        try
+        {
+            await _hubConnection.StartAsync(_hubCts.Token);
+            await LoadCurrentStatus();
+        }
+        catch (OperationCanceledException)
+        {
+            // Component disposed during connection — ignore
+        }
     }
 
     private async Task LoadStats()
@@ -260,6 +302,21 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task LoadCurrentStatus()
+    {
+        try
+        {
+            _translationStatus = await TranslationService.GetTranslationStatusAsync();
+            _bitmapTranslationStatus = await TranslationService.GetBitmapTranslationStatusAsync();
+            _scanStatus = await LibraryService.GetScanStatusAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // Ignore errors during status fetch
         }
     }
 
@@ -341,45 +398,6 @@
         }
     }
 
-    private async Task CheckTranslationStatus()
-    {
-        try
-        {
-            _translationStatus = await TranslationService.GetTranslationStatusAsync();
-
-            if (_translationStatus is { IsRunning: false, Result: not null })
-            {
-                // Translation just finished
-                await LoadStats();
-            }
-
-            StateHasChanged();
-        }
-        catch
-        {
-            // Ignore errors during polling
-        }
-    }
-
-    private async Task CheckScanStatus()
-    {
-        try
-        {
-            _scanStatus = await LibraryService.GetScanStatusAsync();
-
-            if (_scanStatus is { IsRunning: false, Result: not null })
-            {
-                // Scan just finished
-                await LoadStats();
-            }
-
-            StateHasChanged();
-        }
-        catch
-        {
-            // Ignore errors during polling
-        }
-    }
 
     private async Task StartBitmapTranslation()
     {
@@ -433,28 +451,15 @@
         }
     }
 
-    private async Task CheckBitmapTranslationStatus()
+    public async ValueTask DisposeAsync()
     {
-        try
+        if (_hubCts is not null)
         {
-            _bitmapTranslationStatus = await TranslationService.GetBitmapTranslationStatusAsync();
-
-            if (_bitmapTranslationStatus is { IsRunning: false, Result: not null })
-            {
-                // Bitmap translation just finished
-                await LoadStats();
-            }
-
-            StateHasChanged();
+            await _hubCts.CancelAsync();
+            _hubCts.Dispose();
         }
-        catch
-        {
-            // Ignore errors during polling
-        }
-    }
 
-    public void Dispose()
-    {
-        _statusTimer?.Dispose();
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
     }
 }

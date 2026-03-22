@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 using SwaggerThemes;
 using Translarr.Core.Api.Endpoints;
+using Translarr.Core.Api.Hubs;
 using Translarr.Core.Api.Middleware;
 using Translarr.Core.Infrastructure;
 using Translarr.ServiceDefaults;
@@ -25,6 +26,7 @@ public static class Program
         builder.Services.AddTranslarrAuth(builder.Configuration);
 
         builder.Services.AddAuthorization();
+        builder.Services.AddSignalR();
 
         // Forwarded headers for reverse proxy / Cloudflare Tunnel
         builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -95,6 +97,8 @@ public static class Program
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseRateLimiter();
+
+        app.MapHub<ProgressHub>("/hubs/progress").RequireAuthorization();
 
         // Map API endpoints
         var apiGroup = app.MapGroup("/api");

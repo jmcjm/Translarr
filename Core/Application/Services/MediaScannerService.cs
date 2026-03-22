@@ -18,7 +18,9 @@ public class MediaScannerService(
     private readonly string[] _videoExtensions = [".mkv", ".mp4", ".avi", ".mov", ".m4v", ".webm", ".flv"];
     private const int BatchSize = 50; // Save every 50 files
 
-    public async Task<ScanResultDto> ScanLibraryAsync()
+    public async Task<ScanResultDto> ScanLibraryAsync(
+        Action<ScanProgressUpdate>? onProgressUpdate = null,
+        CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting media scan");
         var startTime = DateTime.UtcNow;
@@ -31,9 +33,21 @@ public class MediaScannerService(
                 ?? throw new ArgumentException("PreferredSubsLang setting not found");
 
             var videoFiles = ScanFilesystemAsync(_mediaRootPath);
+            onProgressUpdate?.Invoke(new ScanProgressUpdate(
+                TotalFiles: videoFiles.Count,
+                ProcessedFiles: 0,
+                CurrentFileName: string.Empty,
+                CurrentStep: ScanStep.DiscoveringFiles
+            ));
             await RemoveMissingEntriesAsync(videoFiles, result, errors);
-            await AnalyzeVideoFilesAsync(videoFiles, preferredLang, result, errors);
+            await AnalyzeVideoFilesAsync(videoFiles, preferredLang, result, errors, onProgressUpdate);
 
+            onProgressUpdate?.Invoke(new ScanProgressUpdate(
+                TotalFiles: videoFiles.Count,
+                ProcessedFiles: videoFiles.Count,
+                CurrentFileName: string.Empty,
+                CurrentStep: ScanStep.Completed
+            ));
             result.Errors = errors;
             result.Duration = DateTime.UtcNow - startTime;
         }
@@ -112,7 +126,7 @@ public class MediaScannerService(
         return videoFiles;
     }
 
-    private async Task AnalyzeVideoFilesAsync(List<VideoFile> videoFiles, string preferredLang, ScanResultDto result, List<string> errors)
+    private async Task AnalyzeVideoFilesAsync(List<VideoFile> videoFiles, string preferredLang, ScanResultDto result, List<string> errors, Action<ScanProgressUpdate>? onProgressUpdate = null)
     {
         logger.LogInformation("Analyzing video files");
         var processedCount = 0;
@@ -169,12 +183,24 @@ public class MediaScannerService(
                 }
 
                 processedCount++;
+                onProgressUpdate?.Invoke(new ScanProgressUpdate(
+                    TotalFiles: videoFiles.Count,
+                    ProcessedFiles: processedCount,
+                    CurrentFileName: videoFile.FileName,
+                    CurrentStep: ScanStep.AnalyzingStreams
+                ));
 
                 // Batch save every BatchSize files
                 if (processedCount % BatchSize == 0)
                 {
                     await unitOfWork.SaveChangesAsync();
                     logger.LogInformation("Saved batch of {count} files", BatchSize);
+                    onProgressUpdate?.Invoke(new ScanProgressUpdate(
+                        TotalFiles: videoFiles.Count,
+                        ProcessedFiles: processedCount,
+                        CurrentFileName: videoFile.FileName,
+                        CurrentStep: ScanStep.UpdatingDatabase
+                    ));
                 }
             }
             catch (Exception ex)
