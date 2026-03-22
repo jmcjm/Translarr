@@ -539,9 +539,63 @@ void OnProgressUpdate(TranslationProgressUpdate update)
 }
 ```
 
-- [ ] **Step 7: Push final status on bitmap completion and error**
+- [ ] **Step 7: Push final status on bitmap completion**
 
-Same pattern as text translation (Steps 3-4) but for bitmap: use `BitmapStatusLock`, `_currentBitmapStatus`, and event name `"BitmapProgress"`. Apply to both the success block (lines 249-264) and error catch block (lines 266-287).
+Replace the bitmap success lock block (find `lock (BitmapStatusLock)` after `var wasCancelled = cts.IsCancellationRequested;`) with:
+
+```csharp
+var wasCancelled = cts.IsCancellationRequested;
+
+TranslationStatus completionSnapshot;
+lock (BitmapStatusLock)
+{
+    _currentBitmapStatus = new TranslationStatus
+    {
+        IsRunning = false,
+        StartedAt = _currentBitmapStatus.StartedAt,
+        CompletedAt = DateTime.UtcNow,
+        Progress = wasCancelled ? "Cancelled" : "Completed",
+        CurrentStep = TranslationStep.Completed,
+        TotalFiles = _currentBitmapStatus.TotalFiles,
+        ProcessedFiles = _currentBitmapStatus.ProcessedFiles,
+        Result = result
+    };
+    completionSnapshot = _currentBitmapStatus.Snapshot();
+}
+_ = hubContext.Clients.All.SendAsync("BitmapProgress", completionSnapshot);
+```
+
+- [ ] **Step 8: Push final status on bitmap error**
+
+Replace the bitmap `catch (Exception ex)` block with:
+
+```csharp
+catch (Exception ex)
+{
+    TranslationStatus errorSnapshot;
+    lock (BitmapStatusLock)
+    {
+        _currentBitmapStatus = new TranslationStatus
+        {
+            IsRunning = false,
+            StartedAt = _currentBitmapStatus?.StartedAt ?? DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
+            Progress = $"Failed: {ex.Message}",
+            Error = ex.Message,
+            Result = new TranslationResultDto
+            {
+                SuccessCount = 0,
+                SkippedNoSubtitles = 0,
+                ErrorCount = 0,
+                Duration = TimeSpan.Zero,
+                Errors = [$"Critical error during bitmap translation: {ex.Message}"]
+            }
+        };
+        errorSnapshot = _currentBitmapStatus.Snapshot();
+    }
+    _ = hubContext.Clients.All.SendAsync("BitmapProgress", errorSnapshot);
+}
+```
 
 - [ ] **Step 8: Build to verify**
 
@@ -714,19 +768,16 @@ This is the largest change. Replace the Timer-based polling with a SignalR `HubC
 
 - [ ] **Step 1: Add inject directives and IAsyncDisposable**
 
+**Note:** The current code has `public void Dispose()` without `@implements IDisposable` — this was a pre-existing bug where the timer was never actually disposed. Adding `@implements IAsyncDisposable` fixes the disposal lifecycle properly.
+
 At the top of `Home.razor`, after existing `@inject` lines (line 5), add:
-
-```razor
-@inject AuthCookieHolder AuthCookieHolder
-@inject IConfiguration Configuration
-@implements IAsyncDisposable
-```
-
-Add using in `@code` block or at top:
 
 ```razor
 @using Microsoft.AspNetCore.SignalR.Client
 @using Translarr.Frontend.HavitWebApp.Auth
+@inject AuthCookieHolder AuthCookieHolder
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
 ```
 
 - [ ] **Step 2: Replace fields in @code block**
@@ -822,14 +873,14 @@ private async Task LoadCurrentStatus()
 
 - [ ] **Step 5: Remove polling methods**
 
-Delete these methods entirely:
-- `CheckTranslationStatus()` (lines 344-362)
-- `CheckScanStatus()` (lines 364-382)
-- `CheckBitmapTranslationStatus()` (lines 436-454)
+Delete these three methods entirely (find them by name — line numbers will have shifted from earlier edits):
+- `CheckTranslationStatus()` — the method containing `await TranslationService.GetTranslationStatusAsync()` in a try/catch
+- `CheckScanStatus()` — the method containing `await LibraryService.GetScanStatusAsync()` in a try/catch
+- `CheckBitmapTranslationStatus()` — the method containing `await TranslationService.GetBitmapTranslationStatusAsync()` in a try/catch
 
 - [ ] **Step 6: Replace Dispose with DisposeAsync**
 
-Replace the `Dispose()` method (lines 456-459) with:
+Find `public void Dispose()` method (contains `_statusTimer?.Dispose()`) and replace it with:
 
 ```csharp
 public async ValueTask DisposeAsync()
