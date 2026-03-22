@@ -24,6 +24,23 @@
     <div class="row g-4">
         <!-- Left Column -->
         <div class="col-12 col-md-6">
+            <!-- Translation Settings -->
+            <HxCard CssClass="mb-4">
+                <HeaderTemplate>
+                    <h5 class="mb-0">Translation Settings</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="mb-3">
+                        <label class="form-label">Preferred Subtitle Language</label>
+                        <input type="text"
+                               class="form-control"
+                               @bind="_preferredSubsLang"
+                               placeholder="e.g., pl, es, fr" />
+                        <div class="form-text">@GetSettingDescription("PreferredSubsLang")</div>
+                    </div>
+                </BodyTemplate>
+            </HxCard>
+
             <!-- LLM Configuration -->
             <HxCard CssClass="mb-4">
                 <HeaderTemplate>
@@ -126,23 +143,6 @@
 
         <!-- Right Column -->
         <div class="col-12 col-md-6">
-            <!-- Translation Settings -->
-            <HxCard CssClass="mb-4">
-                <HeaderTemplate>
-                    <h5 class="mb-0">Translation Settings</h5>
-                </HeaderTemplate>
-                <BodyTemplate>
-                    <div class="mb-3">
-                        <label class="form-label">Preferred Subtitle Language</label>
-                        <input type="text"
-                               class="form-control"
-                               @bind="_preferredSubsLang"
-                               placeholder="e.g., pl, es, fr" />
-                        <div class="form-text">@GetSettingDescription("PreferredSubsLang")</div>
-                    </div>
-                </BodyTemplate>
-            </HxCard>
-
             <!-- Rate Limiting -->
             <HxCard CssClass="mb-4">
                 <HeaderTemplate>
