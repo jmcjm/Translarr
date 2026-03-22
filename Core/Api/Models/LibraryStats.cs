@@ -8,6 +8,7 @@ public class LibraryStats
     public int WantedFiles { get; set; }
     public int AlreadyHasFiles { get; set; }
     public int ErrorFiles { get; set; }
+    public int BitmapFiles { get; set; }
     public DateTime? LastScanned { get; set; }
 }
 

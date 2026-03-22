@@ -16,5 +16,7 @@ public class TranslationStatus
     public int ProcessedFiles { get; set; }
     public string? CurrentFileName { get; set; }
     public TranslationStep CurrentStep { get; set; }
+    public int CurrentBatch { get; set; }
+    public int TotalBatches { get; set; }
 }
 

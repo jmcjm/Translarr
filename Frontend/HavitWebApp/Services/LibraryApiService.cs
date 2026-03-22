@@ -79,4 +79,12 @@ public class LibraryApiService(AuthenticatedApiClientFactory apiClientFactory)
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<SubtitleEntryDto>();
     }
+
+    public async Task<bool> ForceProcessAsync(int id, bool force)
+    {
+        var client = apiClientFactory.CreateClient();
+        var response = await client.PatchAsJsonAsync($"/api/library/entries/{id}/force",
+            new { IsWanted = force });
+        return response.IsSuccessStatusCode;
+    }
 }

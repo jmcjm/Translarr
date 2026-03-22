@@ -46,8 +46,9 @@ public static class StatsEndpoints
             WantedFiles = allEntries.Count(e => e is { IsWanted: true, IsProcessed: false, AlreadyHad: false }),
             AlreadyHasFiles = allEntries.Count(e => e.AlreadyHad),
             ErrorFiles = allEntries.Count(e => !string.IsNullOrEmpty(e.ErrorMessage)),
+            BitmapFiles = allEntries.Count(e => e is { HasBitmapSubtitlesOnly: true, IsWanted: true, IsProcessed: false }),
             LastScanned = allEntries.Count != 0
-                ? allEntries.Max(e => e.LastScanned) 
+                ? allEntries.Max(e => e.LastScanned)
                 : null
         };
 

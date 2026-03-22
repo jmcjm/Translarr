@@ -107,7 +107,23 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
             ("RateLimitPerMinute", "5", "Maximum number of API requests per minute"),
             ("RateLimitPerDay", "100", "Maximum number of API requests per day"),
             ("AutoLibraryScan", "false", "Whether to automatically scan the library (requires Worker Service – not yet available)"),
-            ("AutoTranslate", "false", "Whether to automatically translate new subtitles (requires Worker Service – not yet available)")
+            ("AutoTranslate", "false", "Whether to automatically translate new subtitles (requires Worker Service – not yet available)"),
+            ("OcrBatchSize", "15", "Number of subtitle frames per OCR API request"),
+            ("OcrSystemPrompt",
+                "### You are an OCR and subtitle translator (English → {preferredLang}).\n" +
+                "You receive numbered images containing embedded subtitles along with their exact timestamps.\n\n" +
+                "{timestamps}\n\n" +
+                "For each image:\n" +
+                "1. Extract the text from the image\n" +
+                "2. Translate it to {preferredLang}\n" +
+                "3. Use EXACTLY the provided timestamps\n\n" +
+                "Rules:\n" +
+                "- Output **MUST** always be in valid **SRT** format\n" +
+                "- **Remove** any formatting tags\n" +
+                "- Number subtitles sequentially starting from 1\n" +
+                "- Preserve line breaks within subtitles\n" +
+                "- Return ONLY the SRT subtitles, nothing else",
+                "System prompt template for bitmap OCR+translation. Use {timestamps} and {preferredLang} placeholders."),
         };
         
         var addedCount = 0;

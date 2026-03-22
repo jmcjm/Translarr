@@ -55,6 +55,8 @@ public class SubtitleEntryConfiguration : IEntityTypeConfiguration<SubtitleEntry
         
         builder.Property(x => x.ErrorMessage)
             .HasMaxLength(2048);
+
+        builder.Property(e => e.HasBitmapSubtitlesOnly).HasDefaultValue(false);
         
         // Indeksy dla efektywnego wyszukiwania
         builder.HasIndex(x => new { x.IsProcessed, x.IsWanted, x.AlreadyHad });

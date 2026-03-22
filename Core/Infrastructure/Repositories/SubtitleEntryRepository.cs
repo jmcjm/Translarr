@@ -22,6 +22,18 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
+    public async Task<List<SubtitleEntryDto>> GetUnprocessedWantedBitmapAsync(int limit)
+    {
+        var entries = await context.SubtitleEntries
+            .Where(e => e.IsWanted && !e.IsProcessed && e.HasBitmapSubtitlesOnly)
+            .OrderBy(e => e.LastScanned)
+            .Take(limit)
+            .ToListAsync();
+
+        return entries.Select(MapToDto).ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<SubtitleEntryDto?> GetByFilePathAsync(string filePath)
     {
         var entry = await context.SubtitleEntries
@@ -60,6 +72,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         dao.LastScanned = entry.LastScanned;
         dao.ProcessedAt = entry.ProcessedAt;
         dao.ErrorMessage = entry.ErrorMessage;
+        dao.HasBitmapSubtitlesOnly = entry.HasBitmapSubtitlesOnly;
 
         return MapToDto(dao);
     }
@@ -235,7 +248,8 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             ForceProcess = dao.ForceProcess,
             LastScanned = dao.LastScanned,
             ProcessedAt = dao.ProcessedAt,
-            ErrorMessage = dao.ErrorMessage
+            ErrorMessage = dao.ErrorMessage,
+            HasBitmapSubtitlesOnly = dao.HasBitmapSubtitlesOnly
         };
     }
 
@@ -254,7 +268,8 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             ForceProcess = dto.ForceProcess,
             LastScanned = dto.LastScanned,
             ProcessedAt = dto.ProcessedAt,
-            ErrorMessage = dto.ErrorMessage
+            ErrorMessage = dto.ErrorMessage,
+            HasBitmapSubtitlesOnly = dto.HasBitmapSubtitlesOnly
         };
     }
 }

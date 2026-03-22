@@ -173,4 +173,77 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
             return false;
         }
     }
+
+    public async Task<bool> ExtractSupAsync(string videoPath, int streamIndex, string outputPath)
+    {
+        try
+        {
+            logger.LogInformation("Extracting PGS subtitle stream {stream} from {file}", streamIndex, videoPath);
+
+            // FFMpegCore can't handle .sup output correctly (tries to find encoder instead of stream copy).
+            // Use raw ffmpeg process instead.
+            var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = $"-y -i \"{videoPath}\" -map 0:{streamIndex} -c copy \"{outputPath}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                var stderr = await process.StandardError.ReadToEndAsync();
+                logger.LogError("ffmpeg exited with code {code}: {err}", process.ExitCode, stderr);
+                return false;
+            }
+
+            return File.Exists(outputPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error extracting PGS subtitles: {msg}", ex.Message);
+            return false;
+        }
+    }
+
+    public async Task<SubtitleStreamInfo?> FindBestBitmapSubtitleStreamAsync(string videoPath)
+    {
+        logger.LogInformation("Finding best bitmap subtitle stream for {file}", videoPath);
+        var mediaInfo = await FFProbe.AnalyseAsync(videoPath);
+        var allSubtitleStreams = mediaInfo.SubtitleStreams.ToList();
+
+        // Filter FOR bitmap codecs (opposite of FindBestSubtitleStreamAsync)
+        var bitmapStreams = allSubtitleStreams
+            .Where(s => BitmapCodecs.Contains(s.CodecName ?? ""))
+            .ToList();
+
+        if (bitmapStreams.Count == 0)
+        {
+            logger.LogWarning("No bitmap subtitle streams found for {file}", videoPath);
+            return null;
+        }
+
+        // Prefer English
+        var englishStreams = bitmapStreams
+            .Where(s => s.Language?.ToLowerInvariant() is "eng" or "en")
+            .ToList();
+
+        var selectedStream = englishStreams.FirstOrDefault() ?? bitmapStreams.First();
+
+        return new SubtitleStreamInfo
+        {
+            StreamIndex = selectedStream.Index,
+            Language = selectedStream.Language ?? "und",
+            CodecName = selectedStream.CodecName,
+            IsSdh = false
+        };
+    }
 }

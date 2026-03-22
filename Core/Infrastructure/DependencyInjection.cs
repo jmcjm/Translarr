@@ -51,12 +51,15 @@ public static class DependencyInjection
         services.AddScoped<IApiUsageService, ApiUsageService>();
         services.AddScoped<IMediaScannerService, MediaScannerService>();
         services.AddScoped<ISubtitleTranslationService, SubtitleTranslationService>();
+        services.AddScoped<IBitmapTranslationService, BitmapTranslationService>();
         services.AddScoped<ISeriesWatchService, SeriesWatchService>();
         
         // Infrastructure Services
+        services.AddScoped<IFileService, FileService>();
         services.AddScoped<IFfmpegService, FfmpegService>();
         services.AddScoped<ISubtitleTranslator, OpenAiSubtitleTranslator>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IBitmapSubtitleTranslator, BitmapSubtitleTranslator>();
         
         return services;
     }

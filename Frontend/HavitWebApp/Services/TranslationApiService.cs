@@ -26,4 +26,26 @@ public class TranslationApiService(AuthenticatedApiClientFactory apiClientFactor
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<TranslationStatus>();
     }
+
+    public async Task<bool> StartBitmapTranslationAsync(int batchSize = 100)
+    {
+        var client = apiClientFactory.CreateClient();
+        var response = await client.PostAsync($"/api/translation/translate-bitmap?batchSize={batchSize}", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> CancelBitmapTranslationAsync()
+    {
+        var client = apiClientFactory.CreateClient();
+        var response = await client.PostAsync("/api/translation/cancel-bitmap", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<TranslationStatus?> GetBitmapTranslationStatusAsync()
+    {
+        var client = apiClientFactory.CreateClient();
+        var response = await client.GetAsync("/api/translation/bitmap-status");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TranslationStatus>();
+    }
 }

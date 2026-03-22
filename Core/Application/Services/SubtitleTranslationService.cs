@@ -13,7 +13,8 @@ public partial class SubtitleTranslationService(
     IApiUsageService apiUsageService,
     IFfmpegService ffmpegService,
     ILogger<SubtitleTranslationService> logger,
-    ISubtitleTranslator subtitleTranslator)
+    ISubtitleTranslator subtitleTranslator,
+    IFileService fileService)
     : ISubtitleTranslationService
 {
     private const string WorkDir = "/tmp/translarr";
@@ -127,8 +128,21 @@ public partial class SubtitleTranslationService(
 
         if (searchResult.Stream == null)
         {
-            // CASE: No suitable subtitles - mark as processed
-            // (this is a permanent state, no point in trying again)
+            // Check if file has bitmap subtitles that could be OCR'd
+            var bitmapStream = await ffmpegService.FindBestBitmapSubtitleStreamAsync(entry.FilePath);
+            if (bitmapStream != null)
+            {
+                logger.LogInformation("File {file} has bitmap-only subtitles, marking for OCR pipeline", entry.FileName);
+                entry.HasBitmapSubtitlesOnly = true;
+                entry.IsProcessed = false;
+                entry.ErrorMessage = null;
+                await repository.UpdateAsync(entry);
+                await unitOfWork.SaveChangesAsync();
+                result.SkippedNoSubtitles++;
+                return;
+            }
+
+            // No subtitles at all
             logger.LogWarning("No suitable subtitles found for {file}, skipping: {reason}", entry.FileName, searchResult.SkipReason);
             entry.IsProcessed = true;
             entry.ProcessedAt = DateTime.UtcNow;
@@ -215,7 +229,7 @@ public partial class SubtitleTranslationService(
             ReportProgress(TranslationStep.SavingSubtitles);
             var outputFileName = $"{baseFileName}.{settings.PreferredSubsLang}.srt";
             var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
-            await File.WriteAllTextAsync(outputPath, translatedContent);
+            await fileService.WriteTextAsync(outputPath, translatedContent);
 
             // 10. Update record
             entry.IsProcessed = true;
@@ -238,7 +252,7 @@ public partial class SubtitleTranslationService(
         {
             logger.LogInformation("Removing temporary files");
             // 10. Remove temporary files
-            if (File.Exists(extractedSubtitlePath))
+            if (fileService.Exists(extractedSubtitlePath))
             {
                 File.Delete(extractedSubtitlePath);
             }
@@ -339,7 +353,7 @@ public partial class SubtitleTranslationService(
             }
 
             var cleanedContent = string.Join('\n', cleanedLines);
-            await File.WriteAllTextAsync(assFilePath, cleanedContent);
+            await fileService.WriteTextAsync(assFilePath, cleanedContent);
 
             var originalSize = content.Length;
             var cleanedSize = cleanedContent.Length;

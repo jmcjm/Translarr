@@ -11,6 +11,10 @@ public static class TranslationEndpoints
     private static readonly Lock StatusLock = new();
     private static CancellationTokenSource? _cancellationTokenSource;
 
+    private static TranslationStatus? _currentBitmapStatus;
+    private static readonly Lock BitmapStatusLock = new();
+    private static CancellationTokenSource? _bitmapCancellationTokenSource;
+
     public static RouteGroupBuilder MapTranslationEndpoints(this RouteGroupBuilder group)
     {
         group.MapPost("/translate", StartTranslation)
@@ -27,6 +31,19 @@ public static class TranslationEndpoints
         group.MapGet("/status", GetTranslationStatus)
             .WithName("GetTranslationStatus")
             .Produces<TranslationStatus>();
+
+        group.MapPost("/translate-bitmap", StartBitmapTranslation)
+            .WithName("StartBitmapTranslation")
+            .Produces<TranslationResultDto>()
+            .Produces<ProblemDetails>(StatusCodes.Status409Conflict);
+
+        group.MapGet("/bitmap-status", GetBitmapTranslationStatus)
+            .WithName("GetBitmapTranslationStatus")
+            .Produces<TranslationStatus>();
+
+        group.MapPost("/cancel-bitmap", CancelBitmapTranslation)
+            .WithName("CancelBitmapTranslation")
+            .Produces(StatusCodes.Status200OK);
 
         return group;
     }
@@ -174,6 +191,147 @@ public static class TranslationEndpoints
         }
     }
 
+    private static IResult StartBitmapTranslation(
+        [FromQuery] int batchSize,
+        IServiceScopeFactory serviceScopeFactory)
+    {
+        lock (BitmapStatusLock)
+        {
+            if (_currentBitmapStatus?.IsRunning == true)
+            {
+                return Results.Conflict(new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Bitmap translation already in progress",
+                    Detail = "A bitmap translation job is already running. Please wait for it to complete."
+                });
+            }
+
+            _bitmapCancellationTokenSource?.Dispose();
+            _bitmapCancellationTokenSource = new CancellationTokenSource();
+
+            _currentBitmapStatus = new TranslationStatus
+            {
+                IsRunning = true,
+                StartedAt = DateTime.UtcNow,
+                Progress = "Starting bitmap translation..."
+            };
+        }
+
+        var cts = _bitmapCancellationTokenSource;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = serviceScopeFactory.CreateScope();
+                var translationService = scope.ServiceProvider.GetRequiredService<IBitmapTranslationService>();
+
+                void OnProgressUpdate(TranslationProgressUpdate update)
+                {
+                    lock (BitmapStatusLock)
+                    {
+                        if (_currentBitmapStatus != null)
+                        {
+                            _currentBitmapStatus.TotalFiles = update.TotalFiles;
+                            _currentBitmapStatus.ProcessedFiles = update.ProcessedFiles;
+                            _currentBitmapStatus.CurrentFileName = update.CurrentFileName;
+                            _currentBitmapStatus.CurrentStep = update.CurrentStep;
+                            _currentBitmapStatus.CurrentBatch = update.CurrentBatch;
+                            _currentBitmapStatus.TotalBatches = update.TotalBatches;
+                            _currentBitmapStatus.Progress = FormatProgress(update);
+                        }
+                    }
+                }
+
+                var result = await translationService.TranslateBitmapBatchAsync(batchSize, OnProgressUpdate, cts.Token);
+
+                var wasCancelled = cts.IsCancellationRequested;
+
+                lock (BitmapStatusLock)
+                {
+                    _currentBitmapStatus = new TranslationStatus
+                    {
+                        IsRunning = false,
+                        StartedAt = _currentBitmapStatus.StartedAt,
+                        CompletedAt = DateTime.UtcNow,
+                        Progress = wasCancelled ? "Cancelled" : "Completed",
+                        CurrentStep = TranslationStep.Completed,
+                        TotalFiles = _currentBitmapStatus.TotalFiles,
+                        ProcessedFiles = _currentBitmapStatus.ProcessedFiles,
+                        Result = result
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                lock (BitmapStatusLock)
+                {
+                    _currentBitmapStatus = new TranslationStatus
+                    {
+                        IsRunning = false,
+                        StartedAt = _currentBitmapStatus?.StartedAt ?? DateTime.UtcNow,
+                        CompletedAt = DateTime.UtcNow,
+                        Progress = $"Failed: {ex.Message}",
+                        Error = ex.Message,
+                        Result = new TranslationResultDto
+                        {
+                            SuccessCount = 0,
+                            SkippedNoSubtitles = 0,
+                            ErrorCount = 0,
+                            Duration = TimeSpan.Zero,
+                            Errors = [$"Critical error during bitmap translation: {ex.Message}"]
+                        }
+                    };
+                }
+            }
+        });
+
+        return Results.Accepted("/api/translation/bitmap-status", new
+        {
+            Message = "Bitmap translation started",
+            StatusUrl = "/api/translation/bitmap-status"
+        });
+    }
+
+    private static IResult GetBitmapTranslationStatus()
+    {
+        lock (BitmapStatusLock)
+        {
+            if (_currentBitmapStatus is null)
+            {
+                return Results.Ok(new TranslationStatus
+                {
+                    IsRunning = false,
+                    Progress = "No bitmap translation running"
+                });
+            }
+
+            return Results.Ok(_currentBitmapStatus);
+        }
+    }
+
+    private static IResult CancelBitmapTranslation()
+    {
+        lock (BitmapStatusLock)
+        {
+            if (_currentBitmapStatus?.IsRunning != true)
+            {
+                return Results.NotFound(new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "No bitmap translation in progress",
+                    Detail = "There is no running bitmap translation to cancel."
+                });
+            }
+
+            _bitmapCancellationTokenSource?.Cancel();
+            _currentBitmapStatus.Progress = "Cancelling...";
+
+            return Results.Ok(new { Message = "Cancellation requested" });
+        }
+    }
+
     private static string FormatProgress(TranslationProgressUpdate update)
     {
         var stepText = update.CurrentStep switch
@@ -190,6 +348,7 @@ public static class TranslationEndpoints
             _ => "Processing"
         };
 
-        return $"[{update.ProcessedFiles + 1}/{update.TotalFiles}] {stepText}: {update.CurrentFileName}";
+        var batchInfo = update.TotalBatches > 0 ? $" (batch {update.CurrentBatch}/{update.TotalBatches})" : "";
+        return $"[{update.ProcessedFiles + 1}/{update.TotalFiles}] {stepText}{batchInfo}: {update.CurrentFileName}";
     }
 }
