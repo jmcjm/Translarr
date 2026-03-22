@@ -13,7 +13,7 @@ public partial class SubtitleTranslationService(
     IApiUsageService apiUsageService,
     IFfmpegService ffmpegService,
     ILogger<SubtitleTranslationService> logger,
-    IGeminiClient geminiClient)
+    ISubtitleTranslator subtitleTranslator)
     : ISubtitleTranslationService
 {
     private const string WorkDir = "/tmp/translarr";
@@ -41,9 +41,9 @@ public partial class SubtitleTranslationService(
 
             logger.LogInformation("Found {count} unprocessed entries", entries.Count);
 
-            // Get Gemini settings once before processing batch
-            var geminiSettings = await settingsService.GetGeminiSettingsAsync();
-            logger.LogInformation("Using Gemini model {model}", geminiSettings.Model);
+            // Get LLM settings once before processing batch
+            var llmSettings = await settingsService.GetLlmSettingsAsync();
+            logger.LogInformation("Using LLM model {model} at {baseUrl}", llmSettings.Model, llmSettings.BaseUrl);
 
             var totalFiles = entries.Count;
             var processedCount = 0;
@@ -59,7 +59,7 @@ public partial class SubtitleTranslationService(
 
                 try
                 {
-                    await ProcessEntryAsync(entry, result, geminiSettings, processedCount, totalFiles, onProgressUpdate, cancellationToken);
+                    await ProcessEntryAsync(entry, result, llmSettings, processedCount, totalFiles, onProgressUpdate, cancellationToken);
                     processedCount++;
                 }
                 catch (OperationCanceledException)
@@ -108,7 +108,7 @@ public partial class SubtitleTranslationService(
     private async Task ProcessEntryAsync(
         SubtitleEntryDto entry,
         TranslationResultDto result,
-        GeminiSettingsDto settings,
+        LlmSettingsDto settings,
         int currentIndex,
         int totalFiles,
         Action<TranslationProgressUpdate>? onProgressUpdate,
@@ -205,7 +205,7 @@ public partial class SubtitleTranslationService(
             // 7. Call Gemini API
             cancellationToken.ThrowIfCancellationRequested();
             ReportProgress(TranslationStep.TranslatingWithGemini);
-            var translatedContent = await geminiClient.TranslateSubtitlesAsync(subtitleContent, settings);
+            var translatedContent = await subtitleTranslator.TranslateSubtitlesAsync(subtitleContent, settings);
             logger.LogInformation("Received translated subtitles from Gemini API");
 
             // If the model returned answer in markdown code block or {} format, remove it

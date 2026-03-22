@@ -49,13 +49,16 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
         }).ToList();
     }
 
-    public async Task<GeminiSettingsDto> GetGeminiSettingsAsync()
+    public async Task<LlmSettingsDto> GetLlmSettingsAsync()
     {
-        var apiKey = await GetSettingAsync("GeminiApiKey")
-            ?? throw new ArgumentException("GeminiApiKey setting not found");
+        var apiKey = await GetSettingAsync("LlmApiKey")
+            ?? throw new ArgumentException("LlmApiKey setting not found");
 
-        var model = await GetSettingAsync("GeminiModel")
-            ?? throw new ArgumentException("GeminiModel setting not found");
+        var baseUrl = await GetSettingAsync("LlmBaseUrl")
+            ?? throw new ArgumentException("LlmBaseUrl setting not found");
+
+        var model = await GetSettingAsync("LlmModel")
+            ?? throw new ArgumentException("LlmModel setting not found");
 
         var systemPrompt = await GetSettingAsync("SystemPrompt")
             ?? throw new ArgumentException("SystemPrompt setting not found");
@@ -70,9 +73,10 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
         var preferredLang = await GetSettingAsync("PreferredSubsLang")
             ?? throw new ArgumentException("PreferredSubsLang setting not found");
 
-        return new GeminiSettingsDto
+        return new LlmSettingsDto
         {
             ApiKey = apiKey,
+            BaseUrl = baseUrl,
             Model = model,
             SystemPrompt = systemPrompt,
             Temperature = temperature,
