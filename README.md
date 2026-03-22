@@ -11,31 +11,29 @@
 
 ![Blazor](https://img.shields.io/badge/Blazor-512BD4?style=flat&logo=blazor&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=flat&logo=google&logoColor=white)
+![Multi-LLM](https://img.shields.io/badge/Multi--LLM-8E75B2)
 
-**Translarr is a self-hosted application designed to automate the process of translating subtitles for your media library.** Inspired by the *arr suite of tools, Translarr scans your video files, identifies those missing subtitles in your preferred language, and uses the power of Google's Gemini AI to generate and save new, translated subtitle files.
+**Translarr is a self-hosted application designed to automate the process of translating subtitles for your media library.** Inspired by the *arr suite of tools, Translarr scans your video files, identifies those missing subtitles in your preferred language, and uses AI (supporting multiple LLM providers) to generate and save new, translated subtitle files.
 
 ## Key Features
 
 *   **Automated Library Scanning:** Recursively scans your media directories to discover all video files.
 *   **Smart Subtitle Detection:** Automatically checks for existing preferred-language subtitles to avoid redundant work. Filters out bitmap-based subtitles (PGS, VobSub) that can't be translated without OCR.
 *   **Intelligent Stream Selection:** Analyzes embedded subtitle tracks to select the best source for translation (e.g., prioritizing non-SDH English tracks).
-*   **AI-Powered Translation:** Leverages the Google Gemini API for high-quality, context-aware subtitle translation. Gemini was specifically chosen for its advantages:
-    * **Large Context Window:** Its ability to handle a large number of tokens allows entire subtitle files to be processed in a single request, ensuring better context retention and translation consistency.
-    *   **Great Free Tier:** The API provides a substantial free tier, making the service highly accessible and cost-effective for personal use.
+*   **AI-Powered Translation:** Supports multiple LLM providers (Google Gemini, OpenAI, Anthropic, and more) for high-quality, context-aware subtitle translation. Configurable per-provider with their respective API keys and models.
 *   **Modern Web UI:** A clean, responsive dashboard built with Blazor Server.
 *   **Authentication:** Single admin account with JWT-based auth. Setup wizard on first launch, login with "Remember me" support. Rate-limited login with account lockout.
 *   **Translation Control:** Start and stop translations at any time from the dashboard.
 *   **Dashboard & Statistics:** Get a quick overview of your library's state: total files, processed, waiting, and errors.
 *   **Powerful Library Management:** Search, filter, and sort your media files. Manually toggle the "wanted" status for individual files.
-*   **Customizable Settings:** Easily configure your Gemini API key, select the AI model, customize the system prompt, set rate limits, change password, and more.
+*   **Customizable Settings:** Easily configure your LLM provider and API key, select the AI model, customize the system prompt, set rate limits, change password, and more.
 
 ## Technology Stack
 
 *   **Backend:** .NET 10, ASP.NET Core, Entity Framework Core
 *   **Frontend:** Blazor Server with Havit Blazor
 *   **Database:** SQLite (via `CommunityToolkit.Aspire.Hosting.SQLite` and EFCore)
-*   **AI Engine:** Google Gemini API (via `Mscc.GenerativeAI`)
+*   **AI Engine:** Multiple LLM providers (Google Gemini, OpenAI, Anthropic, and others via OpenAI-compatible API)
 *   **Media Processing:** FFmpeg (via `FFMpegCore`)
 *   **Authentication:** ASP.NET Identity + JWT Bearer
 *   **Orchestration:** .NET Aspire
@@ -47,7 +45,7 @@ The project is built using .NET Aspire, following a distributed application mode
 *   **`AppHost`**: The Aspire project that orchestrates the different services.
 *   **`Translarr.Core.Api`**: The backend REST API service. Thin endpoint handlers, JWT Bearer auth.
 *   **`Translarr.Core.Application`**: Business logic interfaces, DTOs, and service contracts.
-*   **`Translarr.Core.Infrastructure`**: Data access, external integrations (FFmpeg, Gemini, Identity), service implementations.
+*   **`Translarr.Core.Infrastructure`**: Data access, external integrations (FFmpeg, LLM clients, Identity), service implementations.
 *   **`Translarr.Frontend.HavitWebApp`**: The Blazor Server frontend for the user interface.
 *   **`ServiceDefaults`**: Shared configurations for health checks, resilience, and OpenTelemetry.
 
@@ -59,7 +57,7 @@ The backend follows Clean Architecture principles with `Application`, `Infrastru
 
 **Prerequisites:**
 - Docker & Docker Compose
-- Google Gemini API Key (get one from [Google AI Studio](https://aistudio.google.com/app/apikey))
+- API key for your chosen LLM provider (e.g., Gemini from [Google AI Studio](https://aistudio.google.com/app/apikey))
 
 **Quick Start:**
 
@@ -95,9 +93,16 @@ The backend follows Clean Architecture principles with `Application`, `Infrastru
 
 1.  Open Translarr and log in.
 2.  Navigate to **Settings** from the sidebar.
-3.  Enter your **Google Gemini API Key**.
-4.  Set your **Preferred Subtitle Language** using its two-letter language code (e.g., `pl` for Polish, `es` for Spanish).
-5.  Review and adjust other settings like the AI Model or Temperature if desired, then click **Save**.
+3.  Select your **LLM Provider** from the dropdown and enter the corresponding **API Key**. Supported providers:
+    - Google Gemini
+    - OpenAI
+    - Anthropic Claude
+    - xAI Grok
+    - DeepSeek
+    - Any OpenAI-compatible API (select "Custom" and enter the base URL)
+4.  Choose a **Model** from the suggested list or enter a custom model name.
+5.  Set your **Preferred Subtitle Language** using its two-letter language code (e.g., `pl` for Polish, `es` for Spanish).
+6.  Review and adjust other settings like Temperature or Max Output Tokens if desired, then click **Save**.
 
 ## Usage Workflow
 

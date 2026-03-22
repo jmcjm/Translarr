@@ -62,7 +62,7 @@ public static class Program
             {
                 Title = "Translarr API",
                 Version = "v1",
-                Description = "API for automatic subtitle translation using Gemini AI"
+                Description = "API for automatic subtitle translation using AI"
             });
         });
 

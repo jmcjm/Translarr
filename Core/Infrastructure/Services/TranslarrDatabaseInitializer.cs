@@ -23,6 +23,7 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
             await context.Database.MigrateAsync();
             logger.LogInformation("Migrations applied successfully");
 
+            await MigrateSettingKeysAsync();
             await SeedDefaultSettingsAsync();
         }
         catch (Exception ex)
@@ -65,14 +66,37 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
         throw new InvalidOperationException($"Unable to connect to database after {maxRetries} attempts");
     }
     
+    private async Task MigrateSettingKeysAsync()
+    {
+        var renames = new Dictionary<string, string>
+        {
+            { "GeminiApiKey", "LlmApiKey" },
+            { "GeminiModel", "LlmModel" }
+        };
+
+        foreach (var (oldKey, newKey) in renames)
+        {
+            var existingSetting = await context.AppSettings.FirstOrDefaultAsync(s => s.Key == oldKey);
+            if (existingSetting != null)
+            {
+                logger.LogInformation("Migrating setting key {old} → {new}", oldKey, newKey);
+                existingSetting.Key = newKey;
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
     private async Task SeedDefaultSettingsAsync()
     {
         logger.LogInformation("Seeding default settings if needed");
         
         var defaultSettings = new List<(string Key, string Value, string Description)>
         {
-            ("GeminiApiKey", "", "Google Gemini API key – required for subtitle translation"),
-            ("GeminiModel", "gemini-2.5-pro", "Name of the Google Gemini model to use"),
+            ("LlmApiKey", "", "API key for the LLM provider"),
+            ("LlmModel", "gemini-2.5-flash", "Name of the LLM model to use"),
+            ("LlmBaseUrl", "https://generativelanguage.googleapis.com/v1beta/openai/", "Base URL of the OpenAI-compatible API endpoint"),
+            ("LlmMaxOutputTokens", "65535", "Maximum output tokens for the LLM response"),
             ("Temperature", "0.55", "AI model temperature (0.0 - 1.0). Lower value = more deterministic translation"),
             ("SystemPrompt", 
                 "You are an advanced subtitle translator to polish. " +

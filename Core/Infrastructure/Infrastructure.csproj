@@ -15,7 +15,7 @@
       <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
       <PackageReference Include="FFMpegCore" />
-      <PackageReference Include="Mscc.GenerativeAI" />
+      <PackageReference Include="OpenAI" />
     </ItemGroup>
 
 </Project>
