@@ -14,6 +14,7 @@ public class BitmapSubtitleTranslator(
 
     public async Task<string> TranslateBitmapSubtitlesAsync(
         string videoPath, int streamIndex, LlmSettingsDto settings,
+        Action<int, int>? onBatchProgress = null,
         CancellationToken cancellationToken = default)
     {
         var hash = Guid.NewGuid().ToString("N")[..12];
@@ -53,8 +54,11 @@ public class BitmapSubtitleTranslator(
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var batch = frames.Skip(i).Take(batchSize).ToList();
+                var batchNum = i / batchSize + 1;
+                var totalBatches = (frames.Count + batchSize - 1) / batchSize;
                 logger.LogInformation("Processing OCR batch {batchNum}/{totalBatches} ({count} frames)",
-                    i / batchSize + 1, (frames.Count + batchSize - 1) / batchSize, batch.Count);
+                    batchNum, totalBatches, batch.Count);
+                onBatchProgress?.Invoke(batchNum, totalBatches);
 
                 var prompt = BuildPrompt(batch, settings);
                 var images = batch.Select(f => File.ReadAllBytes(f.FilePath)).ToList();

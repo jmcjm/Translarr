@@ -138,7 +138,18 @@ public class BitmapTranslationService(
         ReportProgress(TranslationStep.TranslatingWithLlm);
         logger.LogInformation("Sending bitmap subtitles for OCR translation: {file}", entry.FileName);
         var translatedContent = await bitmapSubtitleTranslator.TranslateBitmapSubtitlesAsync(
-            entry.FilePath, stream.StreamIndex, settings, cancellationToken);
+            entry.FilePath, stream.StreamIndex, settings,
+            onBatchProgress: (current, total) =>
+            {
+                onProgressUpdate?.Invoke(new TranslationProgressUpdate(
+                    TotalFiles: totalFiles,
+                    ProcessedFiles: currentIndex,
+                    CurrentFileName: entry.FileName,
+                    CurrentStep: TranslationStep.TranslatingWithLlm,
+                    CurrentBatch: current,
+                    TotalBatches: total));
+            },
+            cancellationToken: cancellationToken);
         logger.LogInformation("Received OCR translation for {file}", entry.FileName);
 
         // 4. Save translated SRT

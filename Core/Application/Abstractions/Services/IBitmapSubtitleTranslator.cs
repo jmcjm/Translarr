@@ -6,5 +6,6 @@ public interface IBitmapSubtitleTranslator
 {
     Task<string> TranslateBitmapSubtitlesAsync(
         string videoPath, int streamIndex, LlmSettingsDto settings,
+        Action<int, int>? onBatchProgress = null,
         CancellationToken cancellationToken = default);
 }

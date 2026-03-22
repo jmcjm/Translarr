@@ -180,10 +180,23 @@
                     </HeaderTemplate>
                     <BodyTemplate>
                         <p class="mb-2">@_bitmapTranslationStatus.Progress</p>
+                        @{
+                            var batchPercent = _bitmapTranslationStatus.TotalBatches > 0
+                                ? (int)(_bitmapTranslationStatus.CurrentBatch * 100.0 / _bitmapTranslationStatus.TotalBatches)
+                                : 0;
+                        }
                         <div class="progress">
                             <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
                                  role="progressbar"
-                                 style="width: 100%"></div>
+                                 style="width: @(batchPercent > 0 ? batchPercent : 100)%"
+                                 aria-valuenow="@batchPercent"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                @if (batchPercent > 0)
+                                {
+                                    @($"{batchPercent}%")
+                                }
+                            </div>
                         </div>
                     </BodyTemplate>
                 </HxCard>

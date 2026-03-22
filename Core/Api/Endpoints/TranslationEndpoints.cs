@@ -237,6 +237,8 @@ public static class TranslationEndpoints
                             _currentBitmapStatus.ProcessedFiles = update.ProcessedFiles;
                             _currentBitmapStatus.CurrentFileName = update.CurrentFileName;
                             _currentBitmapStatus.CurrentStep = update.CurrentStep;
+                            _currentBitmapStatus.CurrentBatch = update.CurrentBatch;
+                            _currentBitmapStatus.TotalBatches = update.TotalBatches;
                             _currentBitmapStatus.Progress = FormatProgress(update);
                         }
                     }
@@ -346,6 +348,7 @@ public static class TranslationEndpoints
             _ => "Processing"
         };
 
-        return $"[{update.ProcessedFiles + 1}/{update.TotalFiles}] {stepText}: {update.CurrentFileName}";
+        var batchInfo = update.TotalBatches > 0 ? $" (batch {update.CurrentBatch}/{update.TotalBatches})" : "";
+        return $"[{update.ProcessedFiles + 1}/{update.TotalFiles}] {stepText}{batchInfo}: {update.CurrentFileName}";
     }
 }
