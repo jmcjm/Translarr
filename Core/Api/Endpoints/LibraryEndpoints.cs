@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Translarr.Core.Api.Helpers;
+using Translarr.Core.Api.Hubs;
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
@@ -50,7 +52,9 @@ public static class LibraryEndpoints
         return group;
     }
 
-    private static IResult ScanLibrary(IServiceScopeFactory serviceScopeFactory)
+    private static IResult ScanLibrary(
+        IServiceScopeFactory serviceScopeFactory,
+        IHubContext<ProgressHub> hubContext)
     {
         // Check if scan is already running
         lock (ScanLock)
@@ -82,8 +86,28 @@ public static class LibraryEndpoints
                 using var scope = serviceScopeFactory.CreateScope();
                 var scannerService = scope.ServiceProvider.GetRequiredService<IMediaScannerService>();
 
-                var result = await scannerService.ScanLibraryAsync();
+                void OnScanProgress(ScanProgressUpdate update)
+                {
+                    ScanStatus snapshot;
+                    lock (ScanLock)
+                    {
+                        if (_currentScanStatus != null)
+                        {
+                            _currentScanStatus.TotalFiles = update.TotalFiles;
+                            _currentScanStatus.ProcessedFiles = update.ProcessedFiles;
+                            _currentScanStatus.CurrentFileName = update.CurrentFileName;
+                            _currentScanStatus.CurrentStep = update.CurrentStep;
+                            _currentScanStatus.Progress = FormatScanProgress(update);
+                            snapshot = _currentScanStatus.Snapshot();
+                        }
+                        else return;
+                    }
+                    _ = hubContext.Clients.All.SendAsync("ScanProgress", snapshot);
+                }
 
+                var result = await scannerService.ScanLibraryAsync(OnScanProgress);
+
+                ScanStatus completionSnapshot;
                 lock (ScanLock)
                 {
                     _currentScanStatus = new ScanStatus
@@ -92,12 +116,16 @@ public static class LibraryEndpoints
                         StartedAt = _currentScanStatus.StartedAt,
                         CompletedAt = DateTime.UtcNow,
                         Progress = "Completed",
+                        CurrentStep = ScanStep.Completed,
                         Result = result
                     };
+                    completionSnapshot = _currentScanStatus.Snapshot();
                 }
+                _ = hubContext.Clients.All.SendAsync("ScanProgress", completionSnapshot);
             }
             catch (Exception ex)
             {
+                ScanStatus errorSnapshot;
                 lock (ScanLock)
                 {
                     _currentScanStatus = new ScanStatus
@@ -107,6 +135,7 @@ public static class LibraryEndpoints
                         CompletedAt = DateTime.UtcNow,
                         Progress = $"Failed: {ex.Message}",
                         Error = ex.Message,
+                        CurrentStep = ScanStep.Completed,
                         Result = new ScanResultDto
                         {
                             NewFiles = 0,
@@ -117,7 +146,9 @@ public static class LibraryEndpoints
                             Errors = [$"Critical error during scan: {ex.Message}"]
                         }
                     };
+                    errorSnapshot = _currentScanStatus.Snapshot();
                 }
+                _ = hubContext.Clients.All.SendAsync("ScanProgress", errorSnapshot);
             }
         });
 
@@ -206,5 +237,22 @@ public static class LibraryEndpoints
 
             return Results.Ok(_currentScanStatus);
         }
+    }
+
+    private static string FormatScanProgress(ScanProgressUpdate update)
+    {
+        var stepText = update.CurrentStep switch
+        {
+            ScanStep.Starting => "Starting",
+            ScanStep.DiscoveringFiles => "Discovering files",
+            ScanStep.AnalyzingStreams => "Analyzing streams",
+            ScanStep.UpdatingDatabase => "Updating database",
+            ScanStep.Completed => "Completed",
+            _ => "Processing"
+        };
+
+        return update.TotalFiles > 0
+            ? $"[{update.ProcessedFiles}/{update.TotalFiles}] {stepText}: {update.CurrentFileName}"
+            : stepText;
     }
 }
