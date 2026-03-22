@@ -60,6 +60,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         dao.LastScanned = entry.LastScanned;
         dao.ProcessedAt = entry.ProcessedAt;
         dao.ErrorMessage = entry.ErrorMessage;
+        dao.HasBitmapSubtitlesOnly = entry.HasBitmapSubtitlesOnly;
 
         return MapToDto(dao);
     }
@@ -235,7 +236,8 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             ForceProcess = dao.ForceProcess,
             LastScanned = dao.LastScanned,
             ProcessedAt = dao.ProcessedAt,
-            ErrorMessage = dao.ErrorMessage
+            ErrorMessage = dao.ErrorMessage,
+            HasBitmapSubtitlesOnly = dao.HasBitmapSubtitlesOnly
         };
     }
 
@@ -254,7 +256,8 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             ForceProcess = dto.ForceProcess,
             LastScanned = dto.LastScanned,
             ProcessedAt = dto.ProcessedAt,
-            ErrorMessage = dto.ErrorMessage
+            ErrorMessage = dto.ErrorMessage,
+            HasBitmapSubtitlesOnly = dto.HasBitmapSubtitlesOnly
         };
     }
 }

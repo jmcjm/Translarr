@@ -14,5 +14,6 @@ public class SubtitleEntryDao
     public DateTime LastScanned { get; set; }
     public DateTime? ProcessedAt { get; set; }
     public string? ErrorMessage { get; set; }
+    public bool HasBitmapSubtitlesOnly { get; set; }
 }
 
