@@ -7,12 +7,13 @@ Replace the current flat Library grid + separate SeriesManagement page with a hi
 ## Decisions
 
 - **Library detection:** Automatic from top-level folders in `MediaRootPath` (no config)
-- **Movies/flat libraries:** Detected automatically (all entries share same Series value) — rendered as flat file table instead of series→season hierarchy
-- **Data storage:** New `Library` column on `SubtitleEntries` table (queryable via SQL)
-- **Old Library.razor:** Kept as "All Entries" at `/library`
+- **Movies/flat libraries:** Detected by directory depth — if entries have no season-level subdirectories (Series == Season or only one level of nesting), render as flat file table
+- **Data storage:** New `Library` column on `SubtitleEntries` table (queryable via SQL, indexed)
+- **Old Library.razor:** Kept as "All Entries" at `/library/all`
 - **SeriesManagement.razor:** Removed — functionality moved to `SeriesDetail.razor`
-- **Menu refresh:** On app start + after each scan
+- **Menu refresh:** On app start + polling scan status endpoint, refresh on completion
 - **Series detail view (not inline):** Separate page per series with management panel + expandable seasons
+- **API naming uses query params** for library/series names (not path segments) to avoid URL encoding issues
 
 ## Data Model Changes
 
@@ -29,15 +30,60 @@ public string Library { get; set; } = "";
 - Files directly in `MediaRootPath` (no subfolder) → `Library = "Uncategorized"`
 - EF Core migration required
 
-### New DTOs
+### SubtitleEntryConfiguration
 
+- `Library` column: `IsRequired()`, `HasMaxLength(256)`, `HasDefaultValue("")`
+- New index: composite `{Library, Series, Season}` (replaces or supplements existing `{Series, Season}` index if one exists)
+
+### Data Migration
+
+Migration includes a SQL `UPDATE` that derives `Library` from `FilePath` for all existing rows:
+
+```sql
+UPDATE SubtitleEntries
+SET Library = -- extract first path segment after MediaRootPath from FilePath
+```
+
+Fallback: if migration is too complex for path parsing in SQL, set all existing rows to `Library = ""` and force a rescan notification in the UI ("Library data needs refresh — please run a scan").
+
+### SubtitleEntryDto
+
+Add `Library` property:
+
+```csharp
+public string Library { get; set; } = "";
+```
+
+### VideoFile
+
+Add `Library` property:
+
+```csharp
+public string Library { get; set; } = "";
+```
+
+Populated in `ScanFilesystemAsync` when parsing path segments (same place where Series/Season are extracted).
+
+### Repository Mapping
+
+Update in `SubtitleEntryRepository`:
+- `MapToDto()` — map `Library` from DAO to DTO
+- `MapToDao()` — map `Library` from DTO to DAO
+- `UpdateAsync()` — include `Library` in property copy
+
+### New DTOs (one file per record)
+
+`SeriesDetailDto.cs`:
 ```csharp
 public record SeriesDetailDto(
     string SeriesName,
     bool IsWatched,
     List<SeasonDetailDto> Seasons
 );
+```
 
+`SeasonDetailDto.cs`:
+```csharp
 public record SeasonDetailDto(
     string SeasonName,
     bool IsWatched,
@@ -48,28 +94,37 @@ public record SeasonDetailDto(
 );
 ```
 
+These are separate from existing `SeriesGroupDto`/`SeasonGroupDto` which stay for the existing `GetSeriesGroupsAsync` flow. The Detail DTOs include the full `Entries` list; the Group DTOs only have aggregate stats.
+
 ## API Changes
 
 ### New Endpoints
+
+All new endpoints use query parameters for names to avoid URL encoding issues with spaces/special chars:
 
 ```
 GET  /api/library/libraries
      → List<string>
      Returns distinct library names from SubtitleEntries.
 
-GET  /api/library/libraries/{name}/series
+GET  /api/library/libraries/series?library={name}
      → List<SeriesGroupDto>
      Returns series within a library with aggregated stats + watch status.
 
-GET  /api/library/libraries/{name}/series/{seriesName}
+GET  /api/library/libraries/series/detail?library={name}&series={seriesName}
      → SeriesDetailDto
      Returns full series detail: metadata, watch status, seasons with entries.
 ```
 
+Registered in `LibraryEndpoints.MapLibraryEndpoints()` alongside existing endpoints.
+
+### Existing Endpoints — Changes
+
+- `PUT /api/library/bulk/wanted` — add optional `library` query parameter to scope bulk operations and avoid cross-library collisions when series share names
+
 ### Existing Endpoints — No Changes
 
 - `GET /api/library/entries` (paginated flat list) — stays for "All Entries"
-- `PUT /api/library/bulk/wanted` — reused for bulk ops from new UI
 - `SeriesWatchEndpoints` — reused for auto-watch toggles
 
 ## Repository Changes
@@ -79,30 +134,35 @@ GET  /api/library/libraries/{name}/series/{seriesName}
 ```csharp
 Task<List<string>> GetDistinctLibrariesAsync();
 Task<List<SeriesGroupDto>> GetSeriesGroupsByLibraryAsync(string library);
-Task<List<SubtitleEntryDto>> GetEntriesByLibrarySeriesAndSeasonAsync(
-    string library, string series, string? season = null);
+Task<List<SubtitleEntryDto>> GetEntriesByLibraryAndSeriesAsync(string library, string series);
 ```
+
+### ISubtitleEntryRepository — Modified Methods
+
+- `BulkUpdateWantedAsync` — add optional `string? library` parameter to filter by library
 
 ## Service Changes
 
 ### MediaScannerService
 
-- When creating/updating `SubtitleEntryDto`, extract `Library` from first segment of path relative to `MediaRootPath`
-- Logic: `relativePath.Split(Path.DirectorySeparatorChar)[0]` — if only filename (no folder), use `"Uncategorized"`
+- `ScanFilesystemAsync`: when building `VideoFile` objects, extract `Library` from `pathParts[0]` (first segment of relative path). If `pathParts.Length == 1` (file directly in root), use `"Uncategorized"`.
+- `AnalyzeVideoFilesAsync`: propagate `Library` from `VideoFile` to `SubtitleEntryDto`
 
-### LibraryService
+### LibraryService / ILibraryService
 
-New methods wrapping repository calls:
+New methods (all return `ErrorOr<T>`):
 
 ```csharp
-Task<List<string>> GetLibrariesAsync();
-Task<List<SeriesGroupDto>> GetSeriesByLibraryAsync(string library);
-Task<SeriesDetailDto> GetSeriesDetailAsync(string library, string series);
+Task<ErrorOr<List<string>>> GetLibrariesAsync();
+Task<ErrorOr<List<SeriesGroupDto>>> GetSeriesByLibraryAsync(string library);
+Task<ErrorOr<SeriesDetailDto>> GetSeriesDetailAsync(string library, string series);
 ```
+
+`GetSeriesDetailAsync` calls both `ISubtitleEntryRepository` for entries and `ISeriesWatchService` for watch status, combining them into `SeriesDetailDto`.
 
 ### SeriesWatchService
 
-- `GetSeriesGroupsWithWatchStatusAsync()` — add optional `library` parameter for filtering
+- `GetSeriesGroupsWithWatchStatusAsync()` — add optional `string? library` parameter for filtering
 
 ## Frontend Changes
 
@@ -112,37 +172,55 @@ Dynamic submenu under "Library":
 
 ```
 Library
-  ├── All Entries          → /library
+  ├── All Entries          → /library/all
   ├── TV Shows             → /library/tv-shows
   ├── Movies               → /library/movies
   └── Anime                → /library/anime
 ```
 
-- Fetches library list from `GET /api/library/libraries` on layout load
-- Refreshes after scan completes
-- Slug generation: lowercase, spaces → hyphens
+- Inject `LibraryApiService` into NavMenu, fetch library list in `OnInitializedAsync`
+- Refresh mechanism: NavMenu polls scan status when a scan is active; on completion, re-fetches library list
+- Slug generation: lowercase, spaces → hyphens, non-alphanumeric stripped
+- Slug uniqueness: if collision, append `-2`, `-3` etc.
 - Libraries appear/disappear based on scan results
+- Handle API failure gracefully: show "Library" without submenu items, retry on next navigation
+
+### Routing
+
+```
+/library/all                      → Library.razor (flat grid, renamed from /library)
+/library/{librarySlug}            → LibraryBrowser.razor
+/library/{librarySlug}/{series}   → SeriesDetail.razor
+```
+
+`/library/all` avoids route conflict with `/library/{librarySlug}` — "all" is a reserved slug.
 
 ### New Pages
 
 #### LibraryBrowser.razor — `/library/{librarySlug}`
 
-- Resolves slug back to library name
+- Resolves slug back to library name via fetched library list
 - Fetches series list from API
 - **Normal library (TV Shows):** Displays series as cards/rows with: name, episode count, translated count, click → navigate to series detail
-- **Flat library (Movies):** If all entries share same Series or Series == library name → render flat file table directly (same as current Library.razor grid but filtered)
+- **Flat library (Movies):** Detected when all entries have Series == Season or only one distinct Series value → render flat file table directly (same columns as Library.razor but filtered by library)
+- Loading state: spinner while fetching
+- Empty state: "No media found in this library"
+- Error state: retry button
+- Sorting: alphabetical by series name (default)
 
 #### SeriesDetail.razor — `/library/{librarySlug}/{seriesSlug}`
 
 - Header: series name
 - Management panel: auto-watch toggle, bulk Mark All Wanted / Mark All Unwanted buttons
 - Expandable season list:
-  - Each season row: name, stats (total/wanted/processed), auto-watch toggle, bulk wanted button
+  - Each season row: name, stats (total/wanted/processed), auto-watch toggle per season, bulk wanted button per season
   - Expanded: file table with columns matching current Library.razor (FileName, Status badge, Wanted toggle, AlreadyHas, LastScanned, Actions)
+- Sorting: seasons sorted naturally (Season 1, Season 2, ... Season 10 — not lexicographic)
+- Loading/empty/error states as per LibraryBrowser
 
 ### Existing Pages
 
-- **Library.razor** — stays at `/library`, unchanged, serves as "All Entries" flat view
+- **Library.razor** — moved to `/library/all`, otherwise unchanged, serves as "All Entries" flat view
 - **SeriesManagement.razor** — removed, replaced by SeriesDetail.razor
 
 ### LibraryApiService — New Methods
@@ -157,7 +235,9 @@ Task<SeriesDetailDto> GetSeriesDetailAsync(string libraryName, string seriesName
 
 ### Flat Libraries (Movies)
 
-Detection: all entries in a library have the same `Series` value, or `Series` equals the library name. When detected, `LibraryBrowser.razor` skips series list and renders flat file table.
+Detection: all entries in a library have the same `Series` value, or `Series == Season` for all entries (indicating no real hierarchy). Also covers cases like `Movies/Action/film.mkv` where scanner creates Series="Action" but there's no season structure — detected because Series == Season.
+
+When detected, `LibraryBrowser.razor` skips series list and renders flat file table.
 
 ### Uncategorized
 
@@ -167,9 +247,17 @@ Files directly in `MediaRootPath` without a top-level folder get `Library = "Unc
 
 If a scan removes all entries for a library (folder deleted), it disappears from menu on next library list refresh.
 
-### Slug Mapping
+### Slug Collision
 
-URL slugs are derived from library/series names: lowercase, spaces → hyphens, special chars stripped. API endpoints use original names (not slugs). Frontend handles slug↔name mapping via the fetched library/series lists.
+If two library names produce the same slug (e.g., "TV Shows" and "TV-Shows"), append incrementing suffix (`-2`, `-3`). Frontend maintains slug→name mapping from the fetched library list. Collision is detected at mapping time, not stored in DB.
+
+### Case Sensitivity (Linux)
+
+Folder names are case-sensitive on Linux. "Anime" and "anime" are different libraries with different slugs ("anime" vs "anime-2"). This is expected filesystem behavior — no normalization.
+
+### Cross-Library Series Name Collision
+
+Two libraries can have series with the same name. `BulkUpdateWantedAsync` scoped by `library` parameter prevents unintended updates across libraries.
 
 ## What Does NOT Change
 
@@ -178,4 +266,5 @@ URL slugs are derived from library/series names: lowercase, spaces → hyphens, 
 - Settings and Stats pages
 - Bitmap OCR flow
 - FFmpeg integration
-- Existing `GET /api/library/entries` pagination/filter logic
+- Existing `GET /api/library/entries` pagination/filter logic (just route moved to `/library/all`)
+- `DependencyInjection.cs` — no new services, just new methods on existing `LibraryService`
