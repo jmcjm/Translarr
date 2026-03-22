@@ -255,13 +255,13 @@
     private static readonly LlmProvider[] Providers =
     [
         new("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/",
-            ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-3-flash-preview", "gemini-3.1-pro-preview"]),
+            ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview"]),
         new("OpenAI", "https://api.openai.com/v1/",
-            ["gpt-5.4-mini", "gpt-5.3-instant", "gpt-5.4-thinking"]),
+            ["gpt-5.4-mini", "gpt-5.3-instant"]),
         new("Anthropic Claude", "https://api.anthropic.com/v1/",
-            ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"]),
+            ["claude-sonnet-4-6", "claude-haiku-4-5"]),
         new("Grok (xAI)", "https://api.x.ai/v1/",
-            ["grok-4.20"]),
+            ["grok-4.20-0309-reasoning", "grok-4.20-0309-non-reasoning", "grok-4-1-fast-reasoning", "grok-4-1-fast-non-reasoning"]),
         new("DeepSeek", "https://api.deepseek.com/v1/",
             ["deepseek-chat", "deepseek-reasoner"]),
         new("Custom", "", [])
