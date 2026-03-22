@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IApiUsageService, ApiUsageService>();
         services.AddScoped<IMediaScannerService, MediaScannerService>();
         services.AddScoped<ISubtitleTranslationService, SubtitleTranslationService>();
+        services.AddScoped<IBitmapTranslationService, BitmapTranslationService>();
         services.AddScoped<ISeriesWatchService, SeriesWatchService>();
         
         // Infrastructure Services

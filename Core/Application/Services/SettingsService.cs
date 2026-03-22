@@ -76,6 +76,11 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
         var preferredLang = await GetSettingAsync("PreferredSubsLang")
             ?? throw new ArgumentException("PreferredSubsLang setting not found");
 
+        var ocrBatchSizeStr = await GetSettingAsync("OcrBatchSize");
+        var ocrBatchSize = int.TryParse(ocrBatchSizeStr, out var obs) ? obs : 15;
+
+        var ocrSystemPrompt = await GetSettingAsync("OcrSystemPrompt") ?? "";
+
         return new LlmSettingsDto
         {
             ApiKey = apiKey,
@@ -84,7 +89,9 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
             SystemPrompt = systemPrompt,
             Temperature = temperature,
             MaxOutputTokens = maxOutputTokens,
-            PreferredSubsLang = preferredLang
+            PreferredSubsLang = preferredLang,
+            OcrBatchSize = ocrBatchSize,
+            OcrSystemPrompt = ocrSystemPrompt,
         };
     }
 }

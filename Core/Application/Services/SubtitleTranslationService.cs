@@ -127,8 +127,21 @@ public partial class SubtitleTranslationService(
 
         if (searchResult.Stream == null)
         {
-            // CASE: No suitable subtitles - mark as processed
-            // (this is a permanent state, no point in trying again)
+            // Check if file has bitmap subtitles that could be OCR'd
+            var bitmapStream = await ffmpegService.FindBestBitmapSubtitleStreamAsync(entry.FilePath);
+            if (bitmapStream != null)
+            {
+                logger.LogInformation("File {file} has bitmap-only subtitles, marking for OCR pipeline", entry.FileName);
+                entry.HasBitmapSubtitlesOnly = true;
+                entry.IsProcessed = false;
+                entry.ErrorMessage = null;
+                await repository.UpdateAsync(entry);
+                await unitOfWork.SaveChangesAsync();
+                result.SkippedNoSubtitles++;
+                return;
+            }
+
+            // No subtitles at all
             logger.LogWarning("No suitable subtitles found for {file}, skipping: {reason}", entry.FileName, searchResult.SkipReason);
             entry.IsProcessed = true;
             entry.ProcessedAt = DateTime.UtcNow;
