@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Translarr.Core.Api.Hubs;
 using Translarr.Core.Api.Models;
 using Translarr.Core.Application.Abstractions.Services;
 using Translarr.Core.Application.Models;
@@ -50,7 +52,8 @@ public static class TranslationEndpoints
 
     private static IResult StartTranslation(
         [FromQuery] int batchSize,
-        IServiceScopeFactory serviceScopeFactory)
+        IServiceScopeFactory serviceScopeFactory,
+        IHubContext<ProgressHub> hubContext)
     {
         // Check if translation is already running
         lock (StatusLock)
@@ -90,6 +93,7 @@ public static class TranslationEndpoints
                 // Progress callback that updates _currentStatus
                 void OnProgressUpdate(TranslationProgressUpdate update)
                 {
+                    TranslationStatus snapshot;
                     lock (StatusLock)
                     {
                         if (_currentStatus != null)
@@ -99,14 +103,18 @@ public static class TranslationEndpoints
                             _currentStatus.CurrentFileName = update.CurrentFileName;
                             _currentStatus.CurrentStep = update.CurrentStep;
                             _currentStatus.Progress = FormatProgress(update);
+                            snapshot = _currentStatus.Snapshot();
                         }
+                        else return;
                     }
+                    _ = hubContext.Clients.All.SendAsync("TranslationProgress", snapshot);
                 }
 
                 var result = await translationService.TranslateNextBatchAsync(batchSize, OnProgressUpdate, cts.Token);
 
                 var wasCancelled = cts.IsCancellationRequested;
 
+                TranslationStatus completionSnapshot;
                 lock (StatusLock)
                 {
                     _currentStatus = new TranslationStatus
@@ -120,10 +128,13 @@ public static class TranslationEndpoints
                         ProcessedFiles = _currentStatus.ProcessedFiles,
                         Result = result
                     };
+                    completionSnapshot = _currentStatus.Snapshot();
                 }
+                _ = hubContext.Clients.All.SendAsync("TranslationProgress", completionSnapshot);
             }
             catch (Exception ex)
             {
+                TranslationStatus errorSnapshot;
                 lock (StatusLock)
                 {
                     _currentStatus = new TranslationStatus
@@ -142,7 +153,9 @@ public static class TranslationEndpoints
                             Errors = [$"Critical error during translation: {ex.Message}"]
                         }
                     };
+                    errorSnapshot = _currentStatus.Snapshot();
                 }
+                _ = hubContext.Clients.All.SendAsync("TranslationProgress", errorSnapshot);
             }
         });
 
@@ -193,7 +206,8 @@ public static class TranslationEndpoints
 
     private static IResult StartBitmapTranslation(
         [FromQuery] int batchSize,
-        IServiceScopeFactory serviceScopeFactory)
+        IServiceScopeFactory serviceScopeFactory,
+        IHubContext<ProgressHub> hubContext)
     {
         lock (BitmapStatusLock)
         {
@@ -229,6 +243,7 @@ public static class TranslationEndpoints
 
                 void OnProgressUpdate(TranslationProgressUpdate update)
                 {
+                    TranslationStatus snapshot;
                     lock (BitmapStatusLock)
                     {
                         if (_currentBitmapStatus != null)
@@ -240,14 +255,18 @@ public static class TranslationEndpoints
                             _currentBitmapStatus.CurrentBatch = update.CurrentBatch;
                             _currentBitmapStatus.TotalBatches = update.TotalBatches;
                             _currentBitmapStatus.Progress = FormatProgress(update);
+                            snapshot = _currentBitmapStatus.Snapshot();
                         }
+                        else return;
                     }
+                    _ = hubContext.Clients.All.SendAsync("BitmapProgress", snapshot);
                 }
 
                 var result = await translationService.TranslateBitmapBatchAsync(batchSize, OnProgressUpdate, cts.Token);
 
                 var wasCancelled = cts.IsCancellationRequested;
 
+                TranslationStatus completionSnapshot;
                 lock (BitmapStatusLock)
                 {
                     _currentBitmapStatus = new TranslationStatus
@@ -261,10 +280,13 @@ public static class TranslationEndpoints
                         ProcessedFiles = _currentBitmapStatus.ProcessedFiles,
                         Result = result
                     };
+                    completionSnapshot = _currentBitmapStatus.Snapshot();
                 }
+                _ = hubContext.Clients.All.SendAsync("BitmapProgress", completionSnapshot);
             }
             catch (Exception ex)
             {
+                TranslationStatus errorSnapshot;
                 lock (BitmapStatusLock)
                 {
                     _currentBitmapStatus = new TranslationStatus
@@ -283,7 +305,9 @@ public static class TranslationEndpoints
                             Errors = [$"Critical error during bitmap translation: {ex.Message}"]
                         }
                     };
+                    errorSnapshot = _currentBitmapStatus.Snapshot();
                 }
+                _ = hubContext.Clients.All.SendAsync("BitmapProgress", errorSnapshot);
             }
         });
 
