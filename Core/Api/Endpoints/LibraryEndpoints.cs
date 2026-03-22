@@ -88,27 +88,21 @@ public static class LibraryEndpoints
 
                 void OnScanProgress(ScanProgressUpdate update)
                 {
-                    ScanStatus snapshot;
-                    lock (ScanLock)
+                    HubBroadcastHelper.LockSnapshotBroadcast(ScanLock, () =>
                     {
-                        if (_currentScanStatus != null)
-                        {
-                            _currentScanStatus.TotalFiles = update.TotalFiles;
-                            _currentScanStatus.ProcessedFiles = update.ProcessedFiles;
-                            _currentScanStatus.CurrentFileName = update.CurrentFileName;
-                            _currentScanStatus.CurrentStep = update.CurrentStep;
-                            _currentScanStatus.Progress = FormatScanProgress(update);
-                            snapshot = _currentScanStatus.Snapshot();
-                        }
-                        else return;
-                    }
-                    _ = hubContext.Clients.All.SendAsync("ScanProgress", snapshot);
+                        if (_currentScanStatus is null) return null;
+                        _currentScanStatus.TotalFiles = update.TotalFiles;
+                        _currentScanStatus.ProcessedFiles = update.ProcessedFiles;
+                        _currentScanStatus.CurrentFileName = update.CurrentFileName;
+                        _currentScanStatus.CurrentStep = update.CurrentStep;
+                        _currentScanStatus.Progress = FormatScanProgress(update);
+                        return _currentScanStatus.Snapshot();
+                    }, "ScanProgress", hubContext);
                 }
 
                 var result = await scannerService.ScanLibraryAsync(OnScanProgress);
 
-                ScanStatus completionSnapshot;
-                lock (ScanLock)
+                HubBroadcastHelper.LockSnapshotBroadcast(ScanLock, () =>
                 {
                     _currentScanStatus = new ScanStatus
                     {
@@ -119,14 +113,12 @@ public static class LibraryEndpoints
                         CurrentStep = ScanStep.Completed,
                         Result = result
                     };
-                    completionSnapshot = _currentScanStatus.Snapshot();
-                }
-                _ = hubContext.Clients.All.SendAsync("ScanProgress", completionSnapshot);
+                    return _currentScanStatus.Snapshot();
+                }, "ScanProgress", hubContext);
             }
             catch (Exception ex)
             {
-                ScanStatus errorSnapshot;
-                lock (ScanLock)
+                HubBroadcastHelper.LockSnapshotBroadcast(ScanLock, () =>
                 {
                     _currentScanStatus = new ScanStatus
                     {
@@ -146,9 +138,8 @@ public static class LibraryEndpoints
                             Errors = [$"Critical error during scan: {ex.Message}"]
                         }
                     };
-                    errorSnapshot = _currentScanStatus.Snapshot();
-                }
-                _ = hubContext.Clients.All.SendAsync("ScanProgress", errorSnapshot);
+                    return _currentScanStatus.Snapshot();
+                }, "ScanProgress", hubContext);
             }
         });
 
