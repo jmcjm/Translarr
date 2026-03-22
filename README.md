@@ -11,7 +11,7 @@
 
 ![Blazor](https://img.shields.io/badge/Blazor-512BD4?style=flat&logo=blazor&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
-![Multi-LLM](https://img.shields.io/badge/Multi--LLM-8E75B2?style=flat&logo=openai&logoColor=white)
+![Multi-LLM](https://img.shields.io/badge/Multi--LLM-8E75B2)
 
 **Translarr is a self-hosted application designed to automate the process of translating subtitles for your media library.** Inspired by the *arr suite of tools, Translarr scans your video files, identifies those missing subtitles in your preferred language, and uses AI (supporting multiple LLM providers) to generate and save new, translated subtitle files.
 
