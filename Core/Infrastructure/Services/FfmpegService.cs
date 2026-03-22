@@ -173,4 +173,59 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
             return false;
         }
     }
+
+    public async Task<bool> ExtractSupAsync(string videoPath, int streamIndex, string outputPath)
+    {
+        try
+        {
+            logger.LogInformation("Extracting PGS subtitle stream {stream} from {file}", streamIndex, videoPath);
+
+            await FFMpegArguments
+                .FromFileInput(videoPath)
+                .OutputToFile(outputPath, true, options => options
+                    .SelectStream(streamIndex)
+                    .ForceFormat("sup"))
+                .ProcessAsynchronously();
+
+            return File.Exists(outputPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error extracting PGS subtitles: {msg}", ex.Message);
+            return false;
+        }
+    }
+
+    public async Task<SubtitleStreamInfo?> FindBestBitmapSubtitleStreamAsync(string videoPath)
+    {
+        logger.LogInformation("Finding best bitmap subtitle stream for {file}", videoPath);
+        var mediaInfo = await FFProbe.AnalyseAsync(videoPath);
+        var allSubtitleStreams = mediaInfo.SubtitleStreams.ToList();
+
+        // Filter FOR bitmap codecs (opposite of FindBestSubtitleStreamAsync)
+        var bitmapStreams = allSubtitleStreams
+            .Where(s => BitmapCodecs.Contains(s.CodecName ?? ""))
+            .ToList();
+
+        if (bitmapStreams.Count == 0)
+        {
+            logger.LogWarning("No bitmap subtitle streams found for {file}", videoPath);
+            return null;
+        }
+
+        // Prefer English
+        var englishStreams = bitmapStreams
+            .Where(s => s.Language?.ToLowerInvariant() is "eng" or "en")
+            .ToList();
+
+        var selectedStream = englishStreams.FirstOrDefault() ?? bitmapStreams.First();
+
+        return new SubtitleStreamInfo
+        {
+            StreamIndex = selectedStream.Index,
+            Language = selectedStream.Language ?? "und",
+            CodecName = selectedStream.CodecName,
+            IsSdh = false
+        };
+    }
 }
