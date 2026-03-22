@@ -20,8 +20,8 @@
 @if (_stats != null)
 {
     <!-- Statistics Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-sm-6 col-md-3">
+    <div class="row row-cols-1 row-cols-sm-3 row-cols-lg-5 g-3 mb-4">
+        <div class="col">
             <HxCard>
                 <BodyTemplate>
                     <h2 class="display-6">@_stats.TotalFiles</h2>
@@ -30,7 +30,7 @@
             </HxCard>
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col">
             <HxCard CssClass="border-success">
                 <BodyTemplate>
                     <h2 class="display-6 text-success">@_stats.ProcessedFiles</h2>
@@ -39,16 +39,16 @@
             </HxCard>
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col">
             <HxCard CssClass="border-warning">
                 <BodyTemplate>
                     <h2 class="display-6 text-warning">@_stats.WantedFiles</h2>
-                    <p class="text-muted mb-0">Waiting to Process</p>
+                    <p class="text-muted mb-0">Waiting</p>
                 </BodyTemplate>
             </HxCard>
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col">
             <HxCard CssClass="border-danger">
                 <BodyTemplate>
                     <h2 class="display-6 text-danger">@_stats.ErrorFiles</h2>
@@ -57,11 +57,11 @@
             </HxCard>
         </div>
 
-        <div class="col-12 col-sm-6 col-md-3">
+        <div class="col">
             <HxCard CssClass="border-info">
                 <BodyTemplate>
                     <h2 class="display-6 text-info">@_stats.BitmapFiles</h2>
-                    <p class="text-muted mb-0">Bitmap Subtitles</p>
+                    <p class="text-muted mb-0">Bitmap</p>
                 </BodyTemplate>
             </HxCard>
         </div>
