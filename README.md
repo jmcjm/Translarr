@@ -93,9 +93,16 @@ The backend follows Clean Architecture principles with `Application`, `Infrastru
 
 1.  Open Translarr and log in.
 2.  Navigate to **Settings** from the sidebar.
-3.  Select your **LLM Provider** and enter the corresponding **API Key**.
-4.  Set your **Preferred Subtitle Language** using its two-letter language code (e.g., `pl` for Polish, `es` for Spanish).
-5.  Review and adjust other settings like the AI Model or Temperature if desired, then click **Save**.
+3.  Select your **LLM Provider** from the dropdown and enter the corresponding **API Key**. Supported providers:
+    - Google Gemini
+    - OpenAI
+    - Anthropic Claude
+    - xAI Grok
+    - DeepSeek
+    - Any OpenAI-compatible API (select "Custom" and enter the base URL)
+4.  Choose a **Model** from the suggested list or enter a custom model name.
+5.  Set your **Preferred Subtitle Language** using its two-letter language code (e.g., `pl` for Polish, `es` for Spanish).
+6.  Review and adjust other settings like Temperature or Max Output Tokens if desired, then click **Save**.
 
 ## Usage Workflow
 
