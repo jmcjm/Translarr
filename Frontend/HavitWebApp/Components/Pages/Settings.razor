@@ -24,26 +24,63 @@
     <div class="row g-4">
         <!-- Left Column -->
         <div class="col-12 col-md-6">
-            <!-- Gemini API Configuration -->
+            <!-- LLM Configuration -->
             <HxCard CssClass="mb-4">
                 <HeaderTemplate>
-                    <h5 class="mb-0">Gemini API Configuration</h5>
+                    <h5 class="mb-0">LLM Configuration</h5>
                 </HeaderTemplate>
                 <BodyTemplate>
+                    <div class="mb-3">
+                        <label class="form-label">Provider</label>
+                        <select class="form-select" @bind="_selectedProvider" @bind:after="OnProviderChanged">
+                            @foreach (var provider in Providers)
+                            {
+                                <option value="@provider.Name">@provider.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Base URL</label>
+                        <input type="text"
+                               class="form-control"
+                               @bind="_llmBaseUrl"
+                               readonly="@(!IsCustomProvider)" />
+                        <div class="form-text">OpenAI-compatible API endpoint</div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label">API Key</label>
                         <input type="password"
                                class="form-control"
-                               @bind="_geminiApiKey" />
-                        <div class="form-text">@GetSettingDescription("GeminiApiKey")</div>
+                               @bind="_llmApiKey" />
+                        <div class="form-text">@GetSettingDescription("LlmApiKey")</div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Model</label>
-                        <input type="text"
-                               class="form-control"
-                               @bind="_geminiModel" />
-                        <div class="form-text">@GetSettingDescription("GeminiModel")</div>
+                        @{
+                            var currentProvider = Providers.FirstOrDefault(p => p.Name == _selectedProvider);
+                            var suggestedModels = currentProvider?.Models ?? [];
+                            var isCustomModel = suggestedModels.Length == 0 || !suggestedModels.Contains(_llmModel);
+                        }
+                        @if (suggestedModels.Length > 0)
+                        {
+                            <select class="form-select mb-2" value="@(isCustomModel ? "__custom__" : _llmModel)" @onchange="OnModelDropdownChanged">
+                                @foreach (var model in suggestedModels)
+                                {
+                                    <option value="@model">@model</option>
+                                }
+                                <option value="__custom__">Custom...</option>
+                            </select>
+                        }
+                        @if (isCustomModel || suggestedModels.Length == 0)
+                        {
+                            <input type="text"
+                                   class="form-control"
+                                   @bind="_llmModel"
+                                   placeholder="e.g., my-custom-model" />
+                        }
                     </div>
 
                     <div class="mb-3">
@@ -210,14 +247,30 @@
 }
 
 @code {
+    private record LlmProvider(string Name, string BaseUrl, string[] Models);
+
+    private static readonly LlmProvider[] Providers =
+    [
+        new("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/", ["gemini-2.5-flash", "gemini-2.5-pro"]),
+        new("OpenAI", "https://api.openai.com/v1/", ["gpt-4o", "gpt-4o-mini"]),
+        new("Anthropic Claude", "https://api.anthropic.com/v1/", ["claude-sonnet-4-6", "claude-haiku-4-5"]),
+        new("Grok (xAI)", "https://api.x.ai/v1/", ["grok-3", "grok-3-mini"]),
+        new("DeepSeek", "https://api.deepseek.com/v1/", ["deepseek-chat", "deepseek-reasoner"]),
+        new("Custom", "", [])
+    ];
+
+    private string _selectedProvider = "Google Gemini";
+    private string _llmBaseUrl = "";
+    private bool IsCustomProvider => _selectedProvider == "Custom";
+
     private List<AppSettingDto>? _settings;
     private bool _isLoading = true;
     private bool _isTesting;
     private bool _isSaving;
 
     // Local variables for form fields
-    private string _geminiApiKey = "";
-    private string _geminiModel = "";
+    private string _llmApiKey = "";
+    private string _llmModel = "";
     private string _systemPrompt = "";
     private string _preferredSubsLang = "";
     private double _temperature = 0.55;
@@ -230,6 +283,30 @@
     private string _newPassword = "";
     private string _confirmNewPassword = "";
     private bool _isChangingPassword;
+
+    private void OnProviderChanged()
+    {
+        var provider = Providers.FirstOrDefault(p => p.Name == _selectedProvider);
+        if (provider != null && !IsCustomProvider)
+        {
+            _llmBaseUrl = provider.BaseUrl;
+            if (provider.Models.Length > 0)
+                _llmModel = provider.Models[0];
+        }
+    }
+
+    private void OnModelDropdownChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (value != null && value != "__custom__")
+        {
+            _llmModel = value;
+        }
+        else
+        {
+            _llmModel = "";
+        }
+    }
 
     private async Task ChangePassword()
     {
@@ -285,8 +362,10 @@
             _settings = await SettingsService.GetAllSettingsAsync();
 
             // Load values into local variables
-            _geminiApiKey = GetSettingValue("GeminiApiKey");
-            _geminiModel = GetSettingValue("GeminiModel");
+            _llmApiKey = GetSettingValue("LlmApiKey");
+            _llmModel = GetSettingValue("LlmModel");
+            _llmBaseUrl = GetSettingValue("LlmBaseUrl");
+            _selectedProvider = Providers.FirstOrDefault(p => p.BaseUrl == _llmBaseUrl)?.Name ?? "Custom";
             _systemPrompt = GetSettingValue("SystemPrompt");
             _preferredSubsLang = GetSettingValue("PreferredSubsLang");
 
@@ -330,9 +409,10 @@
             _isSaving = true;
             var errorCount = 0;
 
-            // Save Gemini API settings
-            if (!await TrySaveSetting("GeminiApiKey", _geminiApiKey)) errorCount++;
-            if (!await TrySaveSetting("GeminiModel", _geminiModel)) errorCount++;
+            // Save LLM settings
+            if (!await TrySaveSetting("LlmApiKey", _llmApiKey)) errorCount++;
+            if (!await TrySaveSetting("LlmModel", _llmModel)) errorCount++;
+            if (!await TrySaveSetting("LlmBaseUrl", _llmBaseUrl)) errorCount++;
             if (!await TrySaveSetting("Temperature", _temperature.ToString("F2"))) errorCount++;
             if (!await TrySaveSetting("SystemPrompt", _systemPrompt)) errorCount++;
 
