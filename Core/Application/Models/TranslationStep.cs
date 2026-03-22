@@ -8,7 +8,7 @@ public enum TranslationStep
     ExtractingSubtitles,
     CleaningSubtitles,
     ValidatingSize,
-    TranslatingWithGemini,
+    TranslatingWithLlm,
     SavingSubtitles,
     Completed
 }

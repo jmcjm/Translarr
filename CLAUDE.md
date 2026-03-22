@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Translarr is a self-hosted subtitle translation automation tool built with .NET 9, Aspire orchestration, Blazor Server UI, and Google Gemini AI. It scans media libraries, detects missing subtitles in a preferred language, and translates them automatically using FFmpeg for stream extraction and Gemini for translation.
+Translarr is a self-hosted subtitle translation automation tool built with .NET 10, Aspire orchestration, Blazor Server UI, and multiple LLM providers (Gemini, OpenAI, Anthropic, etc.). It scans media libraries, detects missing subtitles in a preferred language, and translates them automatically using FFmpeg for stream extraction and an LLM for translation.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ The project follows a distributed application model orchestrated by .NET Aspire:
 - **AppHost**: Aspire orchestration layer that manages service dependencies, configuration parameters, and database provisioning
 - **Core/Api**: REST API backend with minimal API endpoints organized by feature groups (Library, Translation, Settings, Stats)
 - **Core/Application**: Business logic layer with service interfaces and DTOs. Uses ErrorOr pattern for error handling
-- **Core/Infrastructure**: Data access and external integrations (EF Core + SQLite, FFmpeg wrapper, Gemini API client)
+- **Core/Infrastructure**: Data access and external integrations (EF Core + SQLite, FFmpeg wrapper, LLM client)
 - **Frontend/WebApp**: Blazor Server UI built with MudBlazor
 - **Frontend/Worker**: Background worker service (planned for automated scheduling via TickerQ)
 - **ServiceDefaults**: Shared Aspire configuration for health checks, resilience, and OpenTelemetry
@@ -97,14 +97,14 @@ All NuGet versions in `Directory.Packages.props` with `ManagePackageVersionsCent
 
 **Application Layer** (`Core/Application/Services/`):
 - `MediaScannerService`: Scans media directories, detects existing subtitles, identifies translation candidates
-- `SubtitleTranslationService`: Orchestrates translation workflow (extract, translate via Gemini, save)
+- `SubtitleTranslationService`: Orchestrates translation workflow (extract, translate via LLM, save)
 - `LibraryService`: Manages subtitle entry CRUD and wanted/force-process flags
 - `SettingsService`: Application settings management
-- `ApiUsageService`: Tracks Gemini API usage statistics
+- `ApiUsageService`: Tracks LLM API usage statistics
 
 **Infrastructure Layer** (`Core/Infrastructure/Services/`):
 - `FfmpegService`: FFmpeg wrapper for subtitle stream detection and extraction
-- `GeminiClient`: Google Gemini API integration with retry logic
+- `LlmClient` / provider implementations: LLM API integrations (Gemini, OpenAI, Anthropic) with retry logic
 - `TranslarrDatabaseInitializer`: Database setup and default settings seeding
 
 ### API Endpoint Organization
@@ -112,7 +112,7 @@ All NuGet versions in `Directory.Packages.props` with `ManagePackageVersionsCent
 Minimal API endpoints in `Core/Api/Endpoints/` mapped by feature groups in `Program.cs`:
 - `LibraryEndpoints`: GET entries, pagination, search/filter, update wanted status
 - `TranslationEndpoints`: Start translation, status monitoring
-- `SettingsEndpoints`: CRUD for app settings (Gemini key, preferred language, etc.)
+- `SettingsEndpoints`: CRUD for app settings (LLM API key, preferred language, etc.)
 - `StatsEndpoints`: Dashboard statistics
 
 ## FFmpeg Dependency
@@ -152,7 +152,7 @@ Container configuration uses `/t:PublishContainer` target. Images run as non-roo
 ## Settings Configuration
 
 First-run configuration via WebApp Settings page:
-- Google Gemini API Key (get from https://aistudio.google.com/app/apikey)
+- LLM provider selection and API key (e.g. Gemini key from https://aistudio.google.com/app/apikey)
 - Preferred subtitle language (ISO 639-1 two-letter code: pl, es, fr, etc.)
 - AI model selection, temperature, rate limits
 

@@ -184,7 +184,7 @@ public static class TranslationEndpoints
             TranslationStep.ExtractingSubtitles => "Extracting subtitles",
             TranslationStep.CleaningSubtitles => "Cleaning subtitles",
             TranslationStep.ValidatingSize => "Validating size",
-            TranslationStep.TranslatingWithGemini => "Translating with Gemini",
+            TranslationStep.TranslatingWithLlm => "Translating with LLM",
             TranslationStep.SavingSubtitles => "Saving subtitles",
             TranslationStep.Completed => "Completed",
             _ => "Processing"

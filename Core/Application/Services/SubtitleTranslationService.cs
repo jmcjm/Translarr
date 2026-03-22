@@ -164,14 +164,14 @@ public partial class SubtitleTranslationService(
             // Not only is the overall token limit a problem for us, but the output token limit is also an issue, as it maxes out at 65,536.
             // Earlier I set the max input limit based on ASS subtitles, which contained a lot of junk that wasn’t present in the translated subtitles,
             // so the input token count could be much higher than the max output limit.
-            // But when translating pure SRT subtitles, if the input token count was higher than the max output limit, Gemini truncated the output once it reached 65,536 tokens (including thinking tokens).
+            // But when translating pure SRT subtitles, if the input token count was higher than the max output limit, the LLM truncated the output once it reached 65,536 tokens (including thinking tokens).
             // So we need to set the max input slightly lower than the max output and split the input into multiple requests if necessary.
             // This will use more API calls (we only have 100 per day on the free tier), but it's still better than ending up with truncated subtitles ;).
-            
+
             // The problem is that we need to split the subtitles into sensible chunks, not in the middle of a subtitle line.
-            // We also need to include a few previous lines in the next request, so Gemini has context for the translation,
+            // We also need to include a few previous lines in the next request, so the LLM has context for the translation,
             // and afterward we need to merge all chunks back together.
-            // Maybe we could instead send Gemini the entire conversation history and ask it to continue from the last line,
+            // Maybe we could instead send the LLM the entire conversation history and ask it to continue from the last line,
             // but this is still a WIP.
             var maxSizeBytes = 59000;
             
@@ -198,15 +198,15 @@ public partial class SubtitleTranslationService(
             {
                 throw new InvalidOperationException(
                     $"Subtitle file too large: {subtitleContent.Length} bytes (max: {maxSizeBytes} bytes). " +
-                    "This file cannot be processed with the current Gemini API limits.");
+                    "This file cannot be processed with the current LLM API limits.");
             }
 
-            logger.LogInformation("Sending subtitles to Gemini API");
-            // 7. Call Gemini API
+            logger.LogInformation("Sending subtitles to LLM API");
+            // 7. Call LLM API
             cancellationToken.ThrowIfCancellationRequested();
-            ReportProgress(TranslationStep.TranslatingWithGemini);
+            ReportProgress(TranslationStep.TranslatingWithLlm);
             var translatedContent = await subtitleTranslator.TranslateSubtitlesAsync(subtitleContent, settings);
-            logger.LogInformation("Received translated subtitles from Gemini API");
+            logger.LogInformation("Received translated subtitles from LLM API");
 
             // If the model returned answer in markdown code block or {} format, remove it
             translatedContent = MyRegex().Replace(translatedContent, "").Trim();
