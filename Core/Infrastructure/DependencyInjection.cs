@@ -55,7 +55,7 @@ public static class DependencyInjection
         
         // Infrastructure Services
         services.AddScoped<IFfmpegService, FfmpegService>();
-        services.AddScoped<IGeminiClient, GeminiClient>();
+        services.AddScoped<ISubtitleTranslator, OpenAiSubtitleTranslator>();
         services.AddScoped<IAuthService, AuthService>();
         
         return services;

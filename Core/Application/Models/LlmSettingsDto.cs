@@ -1,8 +1,9 @@
 namespace Translarr.Core.Application.Models;
 
-public class GeminiSettingsDto
+public class LlmSettingsDto
 {
     public required string ApiKey { get; init; }
+    public required string BaseUrl { get; init; }
     public required string Model { get; init; }
     public required string SystemPrompt { get; init; }
     public float Temperature { get; init; }
