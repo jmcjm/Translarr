@@ -98,7 +98,8 @@ public class MediaScannerService(
                         FilePath = filePath,
                         FileName = Path.GetFileName(filePath),
                         SeriesNumber = seriesName,
-                        SeasonNumber = seasonName
+                        SeasonNumber = seasonName,
+                        Library = ""
                     });
                 }
                 else
@@ -113,7 +114,8 @@ public class MediaScannerService(
                         FilePath = filePath,
                         FileName = Path.GetFileName(filePath),
                         SeriesNumber = seriesName,
-                        SeasonNumber = seasonName
+                        SeasonNumber = seasonName,
+                        Library = ""
                     });
                 }
             }
