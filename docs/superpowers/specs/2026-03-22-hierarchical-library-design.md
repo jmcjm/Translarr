@@ -40,7 +40,8 @@ public string Library { get; set; } = "";
 Migration includes a SQL `UPDATE` that derives `Library` from `FilePath` for all existing rows:
 
 ```sql
-UPDATE SubtitleEntries
+-- Actual table name is subtitle_entries (mapped in SubtitleEntryConfiguration)
+UPDATE subtitle_entries
 SET Library = -- extract first path segment after MediaRootPath from FilePath
 ```
 
@@ -71,30 +72,38 @@ Update in `SubtitleEntryRepository`:
 - `MapToDao()` — map `Library` from DTO to DAO
 - `UpdateAsync()` — include `Library` in property copy
 
-### New DTOs (one file per record)
+### New DTOs (one file per class, matching existing mutable class pattern)
 
 `SeriesDetailDto.cs`:
 ```csharp
-public record SeriesDetailDto(
-    string SeriesName,
-    bool IsWatched,
-    List<SeasonDetailDto> Seasons
-);
+public class SeriesDetailDto
+{
+    public string SeriesName { get; set; } = "";
+    public bool IsWatched { get; set; }
+    public List<SeasonDetailDto> Seasons { get; set; } = [];
+}
 ```
 
 `SeasonDetailDto.cs`:
 ```csharp
-public record SeasonDetailDto(
-    string SeasonName,
-    bool IsWatched,
-    int TotalFiles,
-    int WantedFiles,
-    int ProcessedFiles,
-    List<SubtitleEntryDto> Entries
-);
+public class SeasonDetailDto
+{
+    public string SeasonName { get; set; } = "";
+    public bool IsWatched { get; set; }
+    public int TotalFiles { get; set; }
+    public int WantedFiles { get; set; }
+    public int ProcessedFiles { get; set; }
+    public List<SubtitleEntryDto> Entries { get; set; } = [];
+}
 ```
 
 These are separate from existing `SeriesGroupDto`/`SeasonGroupDto` which stay for the existing `GetSeriesGroupsAsync` flow. The Detail DTOs include the full `Entries` list; the Group DTOs only have aggregate stats.
+
+### Existing DTO cleanup
+
+Split existing `SeriesGroupDto.cs` (currently contains both `SeriesGroupDto` and `SeasonGroupDto`) into two files to comply with one-file-per-class rule:
+- `SeriesGroupDto.cs` — keeps `SeriesGroupDto`
+- `SeasonGroupDto.cs` — new file for `SeasonGroupDto`
 
 ## API Changes
 
@@ -103,20 +112,20 @@ These are separate from existing `SeriesGroupDto`/`SeasonGroupDto` which stay fo
 All new endpoints use query parameters for names to avoid URL encoding issues with spaces/special chars:
 
 ```
-GET  /api/library/libraries
+GET  /api/library/browse
      → List<string>
      Returns distinct library names from SubtitleEntries.
 
-GET  /api/library/libraries/series?library={name}
+GET  /api/library/browse/series?library={name}
      → List<SeriesGroupDto>
      Returns series within a library with aggregated stats + watch status.
 
-GET  /api/library/libraries/series/detail?library={name}&series={seriesName}
+GET  /api/library/browse/series/detail?library={name}&series={seriesName}
      → SeriesDetailDto
      Returns full series detail: metadata, watch status, seasons with entries.
 ```
 
-Registered in `LibraryEndpoints.MapLibraryEndpoints()` alongside existing endpoints.
+Registered in `LibraryEndpoints.MapLibraryEndpoints()` alongside existing endpoints. Uses `/browse` to avoid stuttering `/library/libraries`.
 
 ### Existing Endpoints — Changes
 
@@ -145,7 +154,10 @@ Task<List<SubtitleEntryDto>> GetEntriesByLibraryAndSeriesAsync(string library, s
 
 ### MediaScannerService
 
-- `ScanFilesystemAsync`: when building `VideoFile` objects, extract `Library` from `pathParts[0]` (first segment of relative path). If `pathParts.Length == 1` (file directly in root), use `"Uncategorized"`.
+- `ScanFilesystemAsync`: when building `VideoFile` objects, extract `Library` from `pathParts[0]` (first segment of relative path):
+  - `pathParts.Length == 1` (file directly in root, e.g. `movie.mkv`): `Library = "Uncategorized"`
+  - `pathParts.Length == 2` (e.g. `Movies/film.mkv`): `Library = pathParts[0]` ("Movies"), Series = "Movies", Season = "Movies" — this is intentional and triggers flat library detection (Library == Series == Season)
+  - `pathParts.Length >= 3` (e.g. `TV Shows/Breaking Bad/S01/ep.mkv`): `Library = pathParts[0]`, Series/Season from existing `pathParts[^3]`/`pathParts[^2]` logic
 - `AnalyzeVideoFilesAsync`: propagate `Library` from `VideoFile` to `SubtitleEntryDto`
 
 ### LibraryService / ILibraryService
@@ -162,7 +174,8 @@ Task<ErrorOr<SeriesDetailDto>> GetSeriesDetailAsync(string library, string serie
 
 ### SeriesWatchService
 
-- `GetSeriesGroupsWithWatchStatusAsync()` — add optional `string? library` parameter for filtering
+- `GetSeriesGroupsWithWatchStatusAsync()` — add optional `string? library = null` parameter for filtering
+- Existing callers (e.g. `SeriesWatchEndpoints.GetSeriesGroups()`) pass `null` — no behavior change for them
 
 ## Frontend Changes
 
@@ -226,10 +239,12 @@ Library
 ### LibraryApiService — New Methods
 
 ```csharp
-Task<List<string>> GetLibrariesAsync();
-Task<List<SeriesGroupDto>> GetSeriesByLibraryAsync(string libraryName);
-Task<SeriesDetailDto> GetSeriesDetailAsync(string libraryName, string seriesName);
+Task<List<string>?> GetLibrariesAsync();
+Task<List<SeriesGroupDto>?> GetSeriesByLibraryAsync(string libraryName);
+Task<SeriesDetailDto?> GetSeriesDetailAsync(string libraryName, string seriesName);
 ```
+
+Return nullable types matching existing service pattern (`EnsureSuccessStatusCode()` throws on failure). Callers (NavMenu, pages) wrap in try-catch for graceful degradation.
 
 ## Edge Cases
 
