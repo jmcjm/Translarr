@@ -53,24 +53,39 @@ Mapped at `/hubs/progress` with `.RequireAuthorization()`.
 
 Payload is the full status object (same models as GET endpoints return). No deltas.
 
+**Note:** `ScanStatus` currently lacks a `CurrentStep` field. Add `ScanStep CurrentStep` to `ScanStatus` so the scan phase information can be pushed to and displayed by the frontend (matching `TranslationStatus.CurrentStep` pattern).
+
 ### API Changes
 
 #### TranslationEndpoints
 
-Callbacks in `StartTranslation()` and `StartBitmapTranslation()` gain an additional step: after updating the static field under lock, push via `IHubContext<ProgressHub>`:
+Callbacks in `StartTranslation()` and `StartBitmapTranslation()` gain an additional step: after updating the static field under lock, push a **snapshot** via `IHubContext<ProgressHub>`.
 
-```
+**Critical: snapshot-then-send pattern.** `TranslationStatus` is a mutable class. Capturing a reference and sending it outside the lock risks serializing mid-mutation. The callback must:
+1. Update the static field inside the lock
+2. Create a snapshot (shallow copy) of the status inside the lock
+3. Fire-and-forget `SendAsync` **outside** the lock with the snapshot
+
+```csharp
 onProgressUpdate: update => {
-    lock { _currentStatus = mapToStatus(update); }
-    hubContext.Clients.All.SendAsync("TranslationProgress", _currentStatus);
+    TranslationStatus snapshot;
+    lock (StatusLock) {
+        _currentStatus = MapToStatus(update);
+        snapshot = _currentStatus.Snapshot(); // shallow copy
+    }
+    _ = hubContext.Clients.All.SendAsync("TranslationProgress", snapshot);
 }
 ```
 
-Completion, error, and cancellation states also push final status.
+Add a `Snapshot()` method to `TranslationStatus` (and `ScanStatus`) that returns a shallow copy. These are flat DTOs with value-type fields + strings + a nullable `TranslationResultDto`, so shallow copy is sufficient.
+
+Completion, error, and cancellation states also push final status using the same snapshot pattern.
 
 `IHubContext<ProgressHub>` injected as parameter in endpoint lambdas (DI resolution).
 
 Static fields + Lock remain unchanged — source of truth for GET endpoints.
+
+**Note on broadcasting:** `Clients.All.SendAsync` broadcasts to every connected client. This is accepted behavior — Translarr is a single-user self-hosted application. If multi-user support is added later, switch to group-based or user-specific broadcasting.
 
 #### LibraryEndpoints
 
@@ -135,28 +150,40 @@ public enum ScanStep
 
 **Add:**
 - `HubConnection` field, built in `OnInitializedAsync()`
+- `CancellationTokenSource _hubCts` for cancelling connection on disposal
 - Event handlers for `TranslationProgress`, `BitmapProgress`, `ScanProgress`
 - Reconnect logic: `WithAutomaticReconnect()` (default: 0s, 2s, 10s, 30s retry)
-- On connect/reconnect: one-time GET to status endpoints for current state
-- `IAsyncDisposable`: `hubConnection.DisposeAsync()`
+- `hubConnection.Reconnected` handler: re-fetch current state via GET endpoints
+- `@implements IAsyncDisposable`: convert existing `Dispose()` to `DisposeAsync()`, dispose both hub connection and any remaining timers
 
 ```csharp
+_hubCts = new CancellationTokenSource();
+
 hubConnection = new HubConnectionBuilder()
     .WithUrl($"{apiBaseUrl}/hubs/progress", options => {
-        options.AccessTokenProvider = () => tokenProvider.GetTokenAsync();
+        options.AccessTokenProvider = () => Task.FromResult(authCookieHolder.CookieValue);
     })
     .WithAutomaticReconnect()
     .Build();
 
 hubConnection.On<TranslationStatus>("TranslationProgress", status => {
+    var wasRunning = _translationStatus?.IsRunning ?? false;
     _translationStatus = status;
+    if (wasRunning && !status.IsRunning && status.Result is not null)
+        InvokeAsync(LoadStats);
     InvokeAsync(StateHasChanged);
 });
 // analogous for BitmapProgress, ScanProgress
 
-await hubConnection.StartAsync();
+hubConnection.Reconnected += async _ => await LoadCurrentStatus();
+
+await hubConnection.StartAsync(_hubCts.Token);
 await LoadCurrentStatus(); // GET endpoints for initial state
 ```
+
+**State transition detection:** The current polling code checks `IsRunning: false, Result: not null` to trigger `LoadStats()`. With push updates, this check would re-trigger on every push after completion. Instead, track the **transition**: compare `wasRunning` (previous state) to new state. Only call `LoadStats()` when transitioning from running to completed.
+
+**CancellationToken on StartAsync:** If the component is disposed while `StartAsync()` is connecting (user navigates away), it throws `ObjectDisposedException`. Pass `_hubCts.Token` and cancel it in `DisposeAsync()`.
 
 #### TranslationApiService
 
@@ -181,7 +208,30 @@ Server-side SignalR is built into ASP.NET Core — no additional package for Api
 
 ### Authorization
 
-Hub mapped with `.RequireAuthorization()`. `HubConnection` provides Bearer token via `AccessTokenProvider`, using the same auth mechanism as `AuthenticatedApiClientFactory`.
+Hub mapped with `.RequireAuthorization()`.
+
+**WebSocket JWT query string handling:** SignalR client cannot send custom HTTP headers during WebSocket upgrade. Instead, the token is sent as `?access_token=...` query parameter. The API's JWT auth middleware must be configured to read tokens from the query string for hub endpoints:
+
+```csharp
+// In JWT Bearer configuration (Program.cs or auth setup)
+options.Events = new JwtBearerEvents {
+    OnMessageReceived = context => {
+        var token = context.Request.Query["access_token"];
+        var path = context.HttpContext.Request.Path;
+        if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs"))
+            context.Token = token;
+        return Task.CompletedTask;
+    }
+};
+```
+
+Without this, every WebSocket connection will 401.
+
+**Token provider in WebApp:** `HubConnection` uses `AccessTokenProvider` delegate. Inject `AuthCookieHolder` (scoped, circuit-lifetime) into `Home.razor` and read `CookieValue` for the JWT:
+
+```csharp
+options.AccessTokenProvider = () => Task.FromResult(authCookieHolder.CookieValue);
+```
 
 ## Files Changed
 
@@ -191,6 +241,8 @@ Hub mapped with `.RequireAuthorization()`. `HubConnection` provides Bearer token
 | `Core/Api/Program.cs` | Modified | Add `AddSignalR()` + `MapHub<ProgressHub>()` |
 | `Core/Api/Endpoints/TranslationEndpoints.cs` | Modified | Inject `IHubContext`, push in callbacks |
 | `Core/Api/Endpoints/LibraryEndpoints.cs` | Modified | Add scan progress callback + hub push |
+| `Core/Api/Models/ScanStatus.cs` | Modified | Add `ScanStep CurrentStep` field + `Snapshot()` method |
+| `Core/Api/Models/TranslationStatus.cs` | Modified | Add `Snapshot()` method |
 | `Core/Application/Services/MediaScannerService.cs` | Modified | Add `Action<ScanProgressUpdate>?` parameter, report progress |
 | `Core/Application/Services/IMediaScannerService.cs` | Modified | Updated interface signature |
 | `Core/Application/Models/ScanProgressUpdate.cs` | **New** | Scan progress record |
@@ -201,7 +253,7 @@ Hub mapped with `.RequireAuthorization()`. `HubConnection` provides Bearer token
 
 ## What Does NOT Change
 
-- `TranslationStatus`, `ScanStatus` models — same payload
+- `TranslationStatus` model — same payload (gains `Snapshot()` method only)
 - `TranslationProgressUpdate`, `TranslationStep` — unchanged
 - `SubtitleTranslationService`, `BitmapTranslationService` — callback signatures unchanged
 - GET status endpoints — kept for reconnect
