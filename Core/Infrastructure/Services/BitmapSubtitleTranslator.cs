@@ -13,9 +13,10 @@ public class BitmapSubtitleTranslator(
     private const string WorkDir = "/tmp/translarr";
 
     public async Task<string> TranslateBitmapSubtitlesAsync(
-        string videoPath, int streamIndex, LlmSettingsDto settings)
+        string videoPath, int streamIndex, LlmSettingsDto settings,
+        CancellationToken cancellationToken = default)
     {
-        var hash = Path.GetFileNameWithoutExtension(videoPath).GetHashCode().ToString("X8");
+        var hash = Guid.NewGuid().ToString("N")[..12];
         var supPath = Path.Combine(WorkDir, $"{hash}.sup");
         var framesDir = Path.Combine(WorkDir, $"{hash}_frames");
 
@@ -49,6 +50,8 @@ public class BitmapSubtitleTranslator(
 
             for (var i = 0; i < frames.Count; i += batchSize)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var batch = frames.Skip(i).Take(batchSize).ToList();
                 logger.LogInformation("Processing OCR batch {batchNum}/{totalBatches} ({count} frames)",
                     i / batchSize + 1, (frames.Count + batchSize - 1) / batchSize, batch.Count);

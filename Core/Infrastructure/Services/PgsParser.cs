@@ -2,22 +2,11 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Translarr.Core.Infrastructure.Services;
 
-public class PgsSubtitle
-{
-    public TimeSpan StartTime { get; set; }
-    public TimeSpan EndTime { get; set; }
-    public int Width { get; set; }
-    public int Height { get; set; }
-    public byte[]? Bitmap { get; set; }
-    public Rgba32[]? Palette { get; set; }
-}
-
 public static class PgsParser
 {
     const byte PDS = 0x14; // Palette Definition Segment
     const byte ODS = 0x15; // Object Definition Segment
     const byte PCS = 0x16; // Presentation Composition Segment
-    const byte WDS = 0x17; // Window Definition Segment
     const byte END = 0x80; // End of Display Set Segment
 
     public static List<PgsSubtitle> Parse(string path)
@@ -28,7 +17,7 @@ public static class PgsParser
 
         PgsSubtitle? current = null;
         Rgba32[]? currentPalette = null;
-        var objectData = new MemoryStream();
+        using var objectData = new MemoryStream();
         int objWidth = 0, objHeight = 0;
 
         while (stream.Position < stream.Length)
@@ -41,7 +30,7 @@ public static class PgsParser
                 break;
 
             var pts = ReadUInt32BE(reader);
-            var dts = ReadUInt32BE(reader);
+            ReadUInt32BE(reader); // DTS - not used but must be read to advance stream
             var segType = reader.ReadByte();
             var segSize = ReadUInt16BE(reader);
 

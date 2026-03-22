@@ -5,5 +5,6 @@ namespace Translarr.Core.Application.Abstractions.Services;
 public interface IBitmapSubtitleTranslator
 {
     Task<string> TranslateBitmapSubtitlesAsync(
-        string videoPath, int streamIndex, LlmSettingsDto settings);
+        string videoPath, int streamIndex, LlmSettingsDto settings,
+        CancellationToken cancellationToken = default);
 }

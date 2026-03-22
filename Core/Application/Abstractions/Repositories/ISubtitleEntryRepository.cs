@@ -14,6 +14,13 @@ public interface ISubtitleEntryRepository
     Task<List<SubtitleEntryDto>> GetUnprocessedWantedAsync(int take = 100);
 
     /// <summary>
+    /// Retrieves a list of unprocessed wanted entries that have bitmap-only subtitles.
+    /// </summary>
+    /// <param name="limit">The maximum number of entries to retrieve.</param>
+    /// <returns>The task result contains a list of <see cref="SubtitleEntryDto"/> objects with bitmap subtitles only.</returns>
+    Task<List<SubtitleEntryDto>> GetUnprocessedWantedBitmapAsync(int limit);
+
+    /// <summary>
     /// Retrieves a subtitle entry based on the specified file path.
     /// </summary>
     /// <param name="filePath">The file path of the subtitle entry to retrieve.</param>

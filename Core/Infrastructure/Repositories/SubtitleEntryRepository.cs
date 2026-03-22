@@ -22,6 +22,18 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
+    public async Task<List<SubtitleEntryDto>> GetUnprocessedWantedBitmapAsync(int limit)
+    {
+        var entries = await context.SubtitleEntries
+            .Where(e => e.IsWanted && !e.IsProcessed && e.HasBitmapSubtitlesOnly)
+            .OrderBy(e => e.LastScanned)
+            .Take(limit)
+            .ToListAsync();
+
+        return entries.Select(MapToDto).ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<SubtitleEntryDto?> GetByFilePathAsync(string filePath)
     {
         var entry = await context.SubtitleEntries

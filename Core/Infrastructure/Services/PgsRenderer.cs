@@ -3,8 +3,6 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Translarr.Core.Infrastructure.Services;
 
-public record RenderedFrame(string FilePath, TimeSpan StartTime, TimeSpan EndTime, int Index);
-
 public static class PgsRenderer
 {
     public static List<RenderedFrame> RenderAll(List<PgsSubtitle> subtitles, string outputDir)

@@ -27,9 +27,7 @@ public class BitmapTranslationService(
 
         try
         {
-            // Get all unprocessed wanted entries and filter to bitmap-only ones
-            var allEntries = await repository.GetUnprocessedWantedAsync(batchSize);
-            var entries = allEntries.Where(e => e.HasBitmapSubtitlesOnly).ToList();
+            var entries = await repository.GetUnprocessedWantedBitmapAsync(batchSize);
 
             if (entries.Count == 0)
             {
@@ -139,7 +137,7 @@ public class BitmapTranslationService(
         ReportProgress(TranslationStep.TranslatingWithLlm);
         logger.LogInformation("Sending bitmap subtitles for OCR translation: {file}", entry.FileName);
         var translatedContent = await bitmapSubtitleTranslator.TranslateBitmapSubtitlesAsync(
-            entry.FilePath, stream.StreamIndex, settings);
+            entry.FilePath, stream.StreamIndex, settings, cancellationToken);
         logger.LogInformation("Received OCR translation for {file}", entry.FileName);
 
         // 4. Save translated SRT
