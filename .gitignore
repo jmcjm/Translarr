@@ -490,4 +490,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Git worktrees
+.worktrees/
 "Orange Is the New Black*"
