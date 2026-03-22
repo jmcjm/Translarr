@@ -18,5 +18,21 @@ public class TranslationStatus
     public TranslationStep CurrentStep { get; set; }
     public int CurrentBatch { get; set; }
     public int TotalBatches { get; set; }
+
+    public TranslationStatus Snapshot() => new()
+    {
+        IsRunning = IsRunning,
+        StartedAt = StartedAt,
+        CompletedAt = CompletedAt,
+        Progress = Progress,
+        Result = Result,
+        Error = Error,
+        TotalFiles = TotalFiles,
+        ProcessedFiles = ProcessedFiles,
+        CurrentFileName = CurrentFileName,
+        CurrentStep = CurrentStep,
+        CurrentBatch = CurrentBatch,
+        TotalBatches = TotalBatches
+    };
 }
 
