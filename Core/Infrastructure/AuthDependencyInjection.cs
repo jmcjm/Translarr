@@ -71,6 +71,18 @@ public static class AuthDependencyInjection
                     IssuerSigningKey = key,
                     ClockSkew = TimeSpan.FromMinutes(1)
                 };
+                // SignalR sends JWT as query string during WebSocket upgrade
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var token = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs"))
+                            context.Token = token;
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         // Data Protection - API only
