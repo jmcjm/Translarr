@@ -12,7 +12,8 @@ public class BitmapTranslationService(
     IApiUsageService apiUsageService,
     IFfmpegService ffmpegService,
     IBitmapSubtitleTranslator bitmapSubtitleTranslator,
-    ILogger<BitmapTranslationService> logger)
+    ILogger<BitmapTranslationService> logger,
+    IFileService fileService)
     : IBitmapTranslationService
 {
     public async Task<TranslationResultDto> TranslateBitmapBatchAsync(
@@ -145,7 +146,7 @@ public class BitmapTranslationService(
         var baseFileName = Path.GetFileNameWithoutExtension(entry.FileName);
         var outputFileName = $"{baseFileName}.{settings.PreferredSubsLang}.srt";
         var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
-        await File.WriteAllTextAsync(outputPath, translatedContent, cancellationToken);
+        await fileService.WriteTextAsync(outputPath, translatedContent);
 
         // 5. Update record
         entry.IsProcessed = true;

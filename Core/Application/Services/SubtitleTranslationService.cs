@@ -13,7 +13,8 @@ public partial class SubtitleTranslationService(
     IApiUsageService apiUsageService,
     IFfmpegService ffmpegService,
     ILogger<SubtitleTranslationService> logger,
-    ISubtitleTranslator subtitleTranslator)
+    ISubtitleTranslator subtitleTranslator,
+    IFileService fileService)
     : ISubtitleTranslationService
 {
     private const string WorkDir = "/tmp/translarr";
@@ -228,7 +229,7 @@ public partial class SubtitleTranslationService(
             ReportProgress(TranslationStep.SavingSubtitles);
             var outputFileName = $"{baseFileName}.{settings.PreferredSubsLang}.srt";
             var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
-            await File.WriteAllTextAsync(outputPath, translatedContent);
+            await fileService.WriteTextAsync(outputPath, translatedContent);
 
             // 10. Update record
             entry.IsProcessed = true;
@@ -251,7 +252,7 @@ public partial class SubtitleTranslationService(
         {
             logger.LogInformation("Removing temporary files");
             // 10. Remove temporary files
-            if (File.Exists(extractedSubtitlePath))
+            if (fileService.Exists(extractedSubtitlePath))
             {
                 File.Delete(extractedSubtitlePath);
             }
@@ -352,7 +353,7 @@ public partial class SubtitleTranslationService(
             }
 
             var cleanedContent = string.Join('\n', cleanedLines);
-            await File.WriteAllTextAsync(assFilePath, cleanedContent);
+            await fileService.WriteTextAsync(assFilePath, cleanedContent);
 
             var originalSize = content.Length;
             var cleanedSize = cleanedContent.Length;

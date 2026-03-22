@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<ISeriesWatchService, SeriesWatchService>();
         
         // Infrastructure Services
+        services.AddScoped<IFileService, FileService>();
         services.AddScoped<IFfmpegService, FfmpegService>();
         services.AddScoped<ISubtitleTranslator, OpenAiSubtitleTranslator>();
         services.AddScoped<IAuthService, AuthService>();
