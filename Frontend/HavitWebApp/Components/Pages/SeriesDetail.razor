@@ -1,0 +1,230 @@
+@page "/library/{LibrarySlug}/{SeriesSlug}"
+@inject LibraryApiService LibraryApiService
+@inject SeriesWatchApiService SeriesWatchApiService
+@inject NavigationManager NavigationManager
+@using Translarr.Core.Application.Models
+@using Translarr.Frontend.HavitWebApp.Helpers
+
+<PageTitle>@_seriesName</PageTitle>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="/library/@LibrarySlug">@_libraryName</a>
+        </li>
+        <li class="breadcrumb-item active">@_seriesName</li>
+    </ol>
+</nav>
+
+<h2>@_seriesName</h2>
+
+@if (_isLoading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (_error)
+{
+    <div class="alert alert-danger">
+        <p>Failed to load series.</p>
+        <button class="btn btn-outline-danger btn-sm" @onclick="LoadData">Retry</button>
+    </div>
+}
+else if (_detail == null)
+{
+    <div class="alert alert-info">Series not found.</div>
+}
+else
+{
+    <!-- Management Panel -->
+    <div class="card mb-4">
+        <div class="card-body d-flex align-items-center gap-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="autoWatch"
+                       checked="@_detail.IsWatched"
+                       @onchange="ToggleSeriesWatch" />
+                <label class="form-check-label" for="autoWatch">Auto-watch</label>
+            </div>
+            <button class="btn btn-sm btn-outline-primary"
+                    @onclick="() => BulkMarkWanted(true)">
+                Mark All Wanted
+            </button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @onclick="() => BulkMarkWanted(false)">
+                Mark All Unwanted
+            </button>
+        </div>
+    </div>
+
+    <!-- Seasons -->
+    @foreach (var season in _detail.Seasons)
+    {
+        var isExpanded = _expandedSeasons.Contains(season.SeasonName);
+        <div class="card mb-2">
+            <div class="card-header d-flex align-items-center"
+                 style="cursor: pointer"
+                 @onclick="() => ToggleExpanded(season.SeasonName)">
+                <span class="me-2">@(isExpanded ? "▼" : "▶")</span>
+                <strong class="me-auto">@season.SeasonName</strong>
+                <span class="text-muted me-3">
+                    @season.ProcessedFiles/@season.TotalFiles translated
+                </span>
+                @if (season.IsWatched)
+                {
+                    <span class="badge bg-success me-2">Watched</span>
+                }
+                <button class="btn btn-sm btn-outline-primary me-1"
+                        @onclick:stopPropagation="true"
+                        @onclick="() => BulkMarkSeasonWanted(season.SeasonName, true)">
+                    Wanted
+                </button>
+                <button class="btn btn-sm btn-outline-secondary"
+                        @onclick:stopPropagation="true"
+                        @onclick="() => BulkMarkSeasonWanted(season.SeasonName, false)">
+                    Unwanted
+                </button>
+            </div>
+
+            @if (isExpanded)
+            {
+                <div class="card-body p-0">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>File Name</th>
+                                <th>Status</th>
+                                <th>Wanted</th>
+                                <th>Already Has</th>
+                                <th>Last Scanned</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in season.Entries)
+                            {
+                                <tr>
+                                    <td>@entry.FileName</td>
+                                    <td>
+                                        @if (entry.IsProcessed)
+                                        {
+                                            <span class="badge bg-success">Processed</span>
+                                        }
+                                        else if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                                        {
+                                            <span class="badge bg-danger" title="@entry.ErrorMessage">Error</span>
+                                        }
+                                        else if (entry.HasBitmapSubtitlesOnly)
+                                        {
+                                            <span class="badge bg-info">Bitmap</span>
+                                        }
+                                        else if (entry.IsWanted)
+                                        {
+                                            <span class="badge bg-warning">Pending</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Idle</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox"
+                                                   checked="@entry.IsWanted"
+                                                   @onchange="() => ToggleWanted(entry)" />
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (entry.AlreadyHad)
+                                        {
+                                            <span class="text-success">✓</span>
+                                        }
+                                    </td>
+                                    <td>@entry.LastScanned.ToString("g")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public string LibrarySlug { get; set; } = "";
+    [Parameter] public string SeriesSlug { get; set; } = "";
+
+    private string _libraryName = "";
+    private string _seriesName = "";
+    private SeriesDetailDto? _detail;
+    private HashSet<string> _expandedSeasons = new();
+    private bool _isLoading = true;
+    private bool _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        _error = false;
+        StateHasChanged();
+
+        try
+        {
+            var libraries = await LibraryApiService.GetLibrariesAsync();
+            _libraryName = SlugHelper.FromSlug(LibrarySlug, libraries ?? []);
+
+            var seriesGroups = await LibraryApiService.GetSeriesByLibraryAsync(_libraryName);
+            _seriesName = SlugHelper.FromSlug(SeriesSlug,
+                seriesGroups?.Select(s => s.SeriesName) ?? []);
+
+            _detail = await LibraryApiService.GetSeriesDetailAsync(_libraryName, _seriesName);
+        }
+        catch
+        {
+            _error = true;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleSeriesWatch()
+    {
+        if (_detail == null) return;
+        var newState = !_detail.IsWatched;
+        await SeriesWatchApiService.SetAutoWatchAsync(_seriesName, null, newState);
+        await LoadData();
+    }
+
+    private async Task BulkMarkWanted(bool wanted)
+    {
+        await SeriesWatchApiService.BulkSetWantedAsync(_seriesName, null, wanted, _libraryName);
+        await LoadData();
+    }
+
+    private async Task BulkMarkSeasonWanted(string seasonName, bool wanted)
+    {
+        await SeriesWatchApiService.BulkSetWantedAsync(_seriesName, seasonName, wanted, _libraryName);
+        await LoadData();
+    }
+
+    private async Task ToggleWanted(SubtitleEntryDto entry)
+    {
+        await LibraryApiService.UpdateWantedStatusAsync(entry.Id, !entry.IsWanted);
+        await LoadData();
+    }
+
+    private void ToggleExpanded(string seasonName)
+    {
+        if (!_expandedSeasons.Add(seasonName))
+            _expandedSeasons.Remove(seasonName);
+    }
+}
