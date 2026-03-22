@@ -61,39 +61,18 @@ public static class SettingsEndpoints
         }
     }
 
-    private static async Task<IResult> TestApiConnection(
-        IGeminiClient geminiClient,
-        ISettingsService settingsService)
+    private static async Task<IResult> TestApiConnection(ISettingsService settingsService, ISubtitleTranslator translator)
     {
         try
         {
-            // Get Gemini settings
-            var settings = await settingsService.GetGeminiSettingsAsync();
-
-            // Try to make a simple test request to Gemini API
-            const string testPrompt = "Hello, this is a test. Please respond with 'Your connection is working!'.";
-
-            var response = await geminiClient.TranslateSubtitlesAsync(testPrompt, settings);
-
-            var result = new ApiTestResult
-            {
-                Success = true,
-                Message = "API connection successful",
-                Response = response
-            };
-
-            return Results.Ok(result);
+            var settings = await settingsService.GetLlmSettingsAsync();
+            // Send a minimal test prompt
+            await translator.TranslateSubtitlesAsync("1\n00:00:01,000 --> 00:00:02,000\nTest", settings);
+            return Results.Ok(new { Success = true, Message = "Connection successful" });
         }
         catch (Exception ex)
         {
-            var result = new ApiTestResult
-            {
-                Success = false,
-                Message = $"API connection failed: {ex.Message}",
-                Response = null
-            };
-
-            return Results.Ok(result);
+            return Results.Ok(new { Success = false, Message = ex.Message });
         }
     }
 }
