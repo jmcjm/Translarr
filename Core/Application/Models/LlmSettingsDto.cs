@@ -9,4 +9,6 @@ public class LlmSettingsDto
     public float Temperature { get; init; }
     public int MaxOutputTokens { get; init; } = 65535;
     public required string PreferredSubsLang { get; init; }
+    public int OcrBatchSize { get; init; } = 15;
+    public string OcrSystemPrompt { get; init; } = "";
 }
