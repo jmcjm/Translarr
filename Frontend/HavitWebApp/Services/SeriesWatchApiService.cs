@@ -64,7 +64,7 @@ public class SeriesWatchApiService(AuthenticatedApiClientFactory apiClientFactor
         return result;
     }
 
-    public async Task<int> BulkSetWantedAsync(string series, string? season, bool wanted)
+    public async Task<int> BulkSetWantedAsync(string series, string? season, bool wanted, string? library = null)
     {
         var client = apiClientFactory.CreateClient();
 
@@ -76,6 +76,9 @@ public class SeriesWatchApiService(AuthenticatedApiClientFactory apiClientFactor
 
         if (season != null)
             queryParams.Add($"season={Uri.EscapeDataString(season)}");
+
+        if (library != null)
+            queryParams.Add($"library={Uri.EscapeDataString(library)}");
 
         var queryString = string.Join("&", queryParams);
         var response = await client.PutAsync($"/api/library/bulk/wanted?{queryString}", null);
