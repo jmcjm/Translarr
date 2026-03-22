@@ -184,7 +184,7 @@ public class FfmpegService(ILogger<FfmpegService> logger) : IFfmpegService
                 .FromFileInput(videoPath)
                 .OutputToFile(outputPath, true, options => options
                     .SelectStream(streamIndex)
-                    .ForceFormat("sup"))
+                    .CopyChannel())
                 .ProcessAsynchronously();
 
             return File.Exists(outputPath);
