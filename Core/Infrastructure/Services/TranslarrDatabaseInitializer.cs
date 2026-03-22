@@ -96,6 +96,7 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
             ("LlmApiKey", "", "API key for the LLM provider"),
             ("LlmModel", "gemini-2.5-flash", "Name of the LLM model to use"),
             ("LlmBaseUrl", "https://generativelanguage.googleapis.com/v1beta/openai/", "Base URL of the OpenAI-compatible API endpoint"),
+            ("LlmMaxOutputTokens", "65535", "Maximum output tokens for the LLM response"),
             ("Temperature", "0.55", "AI model temperature (0.0 - 1.0). Lower value = more deterministic translation"),
             ("SystemPrompt", 
                 "You are an advanced subtitle translator to polish. " +

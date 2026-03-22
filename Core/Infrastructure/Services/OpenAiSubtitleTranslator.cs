@@ -28,7 +28,7 @@ public partial class OpenAiSubtitleTranslator(ILogger<OpenAiSubtitleTranslator> 
             new SystemChatMessage(settings.SystemPrompt),
             new UserChatMessage(subtitlesContent)
         ],
-        new ChatCompletionOptions { Temperature = settings.Temperature, MaxOutputTokenCount = 65536 });
+        new ChatCompletionOptions { Temperature = settings.Temperature, MaxOutputTokenCount = settings.MaxOutputTokens });
 
         if (response.Value.FinishReason == ChatFinishReason.ContentFilter)
         {

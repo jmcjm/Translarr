@@ -70,6 +70,9 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
             ? temp
             : throw new ArgumentException($"Invalid value for setting Temperature, value: {temperatureStr}");
 
+        var maxOutputTokensStr = await GetSettingAsync("LlmMaxOutputTokens");
+        var maxOutputTokens = int.TryParse(maxOutputTokensStr, out var mot) ? mot : 65535;
+
         var preferredLang = await GetSettingAsync("PreferredSubsLang")
             ?? throw new ArgumentException("PreferredSubsLang setting not found");
 
@@ -80,6 +83,7 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
             Model = model,
             SystemPrompt = systemPrompt,
             Temperature = temperature,
+            MaxOutputTokens = maxOutputTokens,
             PreferredSubsLang = preferredLang
         };
     }
