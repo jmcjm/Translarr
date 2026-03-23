@@ -48,6 +48,12 @@ public class LibraryService(
 
         entryResult.Value.ForceProcess = forceProcess;
 
+        if (forceProcess)
+        {
+            entryResult.Value.IsProcessed = false;
+            entryResult.Value.ErrorMessage = null;
+        }
+
         await repository.UpdateAsync(entryResult.Value);
         await unitOfWork.SaveChangesAsync();
 

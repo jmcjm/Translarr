@@ -135,6 +135,7 @@ public partial class SubtitleTranslationService(
                 logger.LogInformation("File {file} has bitmap-only subtitles, marking for OCR pipeline", entry.FileName);
                 entry.HasBitmapSubtitlesOnly = true;
                 entry.IsProcessed = false;
+                entry.ForceProcess = false;
                 entry.ErrorMessage = null;
                 await repository.UpdateAsync(entry);
                 await unitOfWork.SaveChangesAsync();
@@ -145,6 +146,7 @@ public partial class SubtitleTranslationService(
             // No subtitles at all
             logger.LogWarning("No suitable subtitles found for {file}, skipping: {reason}", entry.FileName, searchResult.SkipReason);
             entry.IsProcessed = true;
+            entry.ForceProcess = false;
             entry.ProcessedAt = DateTime.UtcNow;
             entry.ErrorMessage = searchResult.SkipReason ?? "No suitable embedded subtitles found";
             await repository.UpdateAsync(entry);
@@ -233,6 +235,7 @@ public partial class SubtitleTranslationService(
 
             // 10. Update record
             entry.IsProcessed = true;
+            entry.ForceProcess = false;
             entry.ProcessedAt = DateTime.UtcNow;
             entry.ErrorMessage = null;
             await repository.UpdateAsync(entry);
