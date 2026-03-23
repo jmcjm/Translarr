@@ -7,6 +7,7 @@
 @using Translarr.Frontend.HavitWebApp.Auth
 @inject AuthCookieHolder AuthCookieHolder
 @inject IConfiguration Configuration
+@inject IHttpMessageHandlerFactory HandlerFactory
 @implements IAsyncDisposable
 
 <PageTitle>Dashboard - Translarr</PageTitle>
@@ -244,35 +245,36 @@
             .WithUrl($"{apiBaseUrl}/hubs/progress", options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult(AuthCookieHolder.CookieValue);
+                options.HttpMessageHandlerFactory = _ => HandlerFactory.CreateHandler("TranslarrApi");
             })
             .WithAutomaticReconnect()
             .Build();
 
-        _hubConnection.On<TranslationStatus>("TranslationProgress", status =>
+        _hubConnection.On<TranslationStatus>("TranslationProgress", async status =>
         {
             var wasRunning = _translationStatus?.IsRunning ?? false;
             _translationStatus = status;
             if (wasRunning && !status.IsRunning && status.Result is not null)
-                _ = InvokeAsync(LoadStats);
-            _ = InvokeAsync(StateHasChanged);
+                await InvokeAsync(LoadStats);
+            await InvokeAsync(StateHasChanged);
         });
 
-        _hubConnection.On<TranslationStatus>("BitmapProgress", status =>
+        _hubConnection.On<TranslationStatus>("BitmapProgress", async status =>
         {
             var wasRunning = _bitmapTranslationStatus?.IsRunning ?? false;
             _bitmapTranslationStatus = status;
             if (wasRunning && !status.IsRunning && status.Result is not null)
-                _ = InvokeAsync(LoadStats);
-            _ = InvokeAsync(StateHasChanged);
+                await InvokeAsync(LoadStats);
+            await InvokeAsync(StateHasChanged);
         });
 
-        _hubConnection.On<ScanStatus>("ScanProgress", status =>
+        _hubConnection.On<ScanStatus>("ScanProgress", async status =>
         {
             var wasRunning = _scanStatus?.IsRunning ?? false;
             _scanStatus = status;
             if (wasRunning && !status.IsRunning && status.Result is not null)
-                _ = InvokeAsync(LoadStats);
-            _ = InvokeAsync(StateHasChanged);
+                await InvokeAsync(LoadStats);
+            await InvokeAsync(StateHasChanged);
         });
 
         _hubConnection.Reconnected += async _ => await LoadCurrentStatus();
