@@ -8,6 +8,7 @@
             <th>Wanted</th>
             <th>Already Has</th>
             <th>Last Scanned</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -51,6 +52,26 @@
                     }
                 </td>
                 <td>@entry.LastScanned.ToString("g")</td>
+                <td>
+                    <div class="d-flex gap-1">
+                        @if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                        {
+                            <button class="btn btn-info btn-sm"
+                                    title="View error details"
+                                    @onclick="() => OnErrorDetails.InvokeAsync(entry.ErrorMessage)">
+                                <i class="bi bi-info-circle"></i>
+                            </button>
+                        }
+                        @if (entry.IsProcessed || !string.IsNullOrEmpty(entry.ErrorMessage))
+                        {
+                            <button class="btn btn-warning btn-sm"
+                                    title="Retry translation"
+                                    @onclick="() => OnRetry.InvokeAsync(entry)">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        }
+                    </div>
+                </td>
             </tr>
         }
     </tbody>
@@ -62,4 +83,10 @@
 
     [Parameter]
     public EventCallback<SubtitleEntryDto> OnWantedToggled { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnErrorDetails { get; set; }
+
+    [Parameter]
+    public EventCallback<SubtitleEntryDto> OnRetry { get; set; }
 }

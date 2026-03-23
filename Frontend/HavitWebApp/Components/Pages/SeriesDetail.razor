@@ -2,6 +2,7 @@
 @inject LibraryApiService LibraryApiService
 @inject SeriesWatchApiService SeriesWatchApiService
 @inject NavigationManager NavigationManager
+@inject IHxMessengerService Messenger
 @using Translarr.Core.Application.Models
 @using Translarr.Frontend.HavitWebApp.Helpers
 
@@ -91,7 +92,10 @@ else
             @if (isExpanded)
             {
                 <div class="card-body p-0">
-                    <SubtitleEntryTable Entries="season.Entries" OnWantedToggled="ToggleWanted" />
+                    <SubtitleEntryTable Entries="season.Entries"
+                                       OnWantedToggled="ToggleWanted"
+                                       OnErrorDetails="ShowErrorDetails"
+                                       OnRetry="RetryEntry" />
                 </div>
             }
         </div>
@@ -172,5 +176,16 @@ else
     {
         if (!_expandedSeasons.Add(seasonName))
             _expandedSeasons.Remove(seasonName);
+    }
+
+    private void ShowErrorDetails(string errorMessage)
+    {
+        Messenger.AddInformation(errorMessage);
+    }
+
+    private async Task RetryEntry(SubtitleEntryDto entry)
+    {
+        await LibraryApiService.ForceProcessAsync(entry.Id, true);
+        await LoadData();
     }
 }

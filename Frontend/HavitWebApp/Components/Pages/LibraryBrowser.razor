@@ -1,6 +1,7 @@
 @page "/library/{LibrarySlug}"
 @inject LibraryApiService LibraryApiService
 @inject NavigationManager NavigationManager
+@inject IHxMessengerService Messenger
 @using Translarr.Core.Application.Models
 @using Translarr.Frontend.HavitWebApp.Helpers
 
@@ -34,7 +35,10 @@ else if (_isFlat)
 
     @if (_flatEntries != null)
     {
-        <SubtitleEntryTable Entries="_flatEntries" OnWantedToggled="ToggleWanted" />
+        <SubtitleEntryTable Entries="_flatEntries"
+                           OnWantedToggled="ToggleWanted"
+                           OnErrorDetails="ShowErrorDetails"
+                           OnRetry="RetryEntry" />
     }
 }
 else
@@ -128,6 +132,17 @@ else
     private async Task ToggleWanted(SubtitleEntryDto entry)
     {
         await LibraryApiService.UpdateWantedStatusAsync(entry.Id, !entry.IsWanted);
+        await LoadData();
+    }
+
+    private void ShowErrorDetails(string errorMessage)
+    {
+        Messenger.AddInformation(errorMessage);
+    }
+
+    private async Task RetryEntry(SubtitleEntryDto entry)
+    {
+        await LibraryApiService.ForceProcessAsync(entry.Id, true);
         await LoadData();
     }
 }
