@@ -1,7 +1,12 @@
 @inject LibraryApiService LibraryApiService
-@inject NavigationManager NavigationManager
-@implements IDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+@using Translarr.Frontend.HavitWebApp.Auth
+@using Translarr.Core.Api.Models
 @using Translarr.Frontend.HavitWebApp.Helpers
+@inject AuthCookieHolder AuthCookieHolder
+@inject IConfiguration Configuration
+@inject IHttpMessageHandlerFactory HandlerFactory
+@implements IAsyncDisposable
 
 <nav class="nav flex-column">
     <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
@@ -63,17 +68,43 @@
 
 @code {
     private List<string>? _libraries;
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadLibraries();
-        NavigationManager.LocationChanged += OnLocationChanged;
-    }
 
-    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-    {
-        await LoadLibraries();
-        await InvokeAsync(StateHasChanged);
+        var apiBaseUrl = Configuration["ApiBaseUrl"] ?? "https+http://Translarr-Api";
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl($"{apiBaseUrl}/hubs/progress", options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult(AuthCookieHolder.CookieValue);
+                options.HttpMessageHandlerFactory = _ => HandlerFactory.CreateHandler("TranslarrApi");
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<ScanStatus>("ScanProgress", async status =>
+        {
+            if (!status.IsRunning && status.Result is not null)
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadLibraries();
+                    StateHasChanged();
+                });
+            }
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+        }
+        catch
+        {
+            // Hub connection failed — libraries still work from initial load
+        }
     }
 
     private async Task LoadLibraries()
@@ -88,8 +119,9 @@
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        NavigationManager.LocationChanged -= OnLocationChanged;
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
     }
 }

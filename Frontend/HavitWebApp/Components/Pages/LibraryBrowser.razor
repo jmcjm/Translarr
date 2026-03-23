@@ -29,11 +29,67 @@ else if (_seriesGroups == null || _seriesGroups.Count == 0)
 }
 else if (_isFlat)
 {
-    @* Flat library (e.g. Movies) — single series, show all entries directly *@
+    @* Flat library (e.g. Movies) — show file table directly *@
     <p class="text-muted">@_seriesGroups[0].TotalFiles files &middot; @_seriesGroups[0].ProcessedFiles translated</p>
-    <div class="alert alert-info">
-        Flat library view — use <a href="/library/all">All Entries</a> filtered view for now.
-    </div>
+
+    @if (_flatEntries != null)
+    {
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Status</th>
+                    <th>Wanted</th>
+                    <th>Already Has</th>
+                    <th>Last Scanned</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in _flatEntries)
+                {
+                    <tr>
+                        <td>@entry.FileName</td>
+                        <td>
+                            @if (entry.IsProcessed)
+                            {
+                                <span class="badge bg-success">Processed</span>
+                            }
+                            else if (!string.IsNullOrEmpty(entry.ErrorMessage))
+                            {
+                                <span class="badge bg-danger" title="@entry.ErrorMessage">Error</span>
+                            }
+                            else if (entry.HasBitmapSubtitlesOnly)
+                            {
+                                <span class="badge bg-info">Bitmap</span>
+                            }
+                            else if (entry.IsWanted)
+                            {
+                                <span class="badge bg-warning">Pending</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Idle</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       checked="@entry.IsWanted"
+                                       @onchange="() => ToggleWanted(entry)" />
+                            </div>
+                        </td>
+                        <td>
+                            @if (entry.AlreadyHad)
+                            {
+                                <span class="text-success">✓</span>
+                            }
+                        </td>
+                        <td>@entry.LastScanned.ToString("g")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 }
 else
 {
@@ -74,6 +130,7 @@ else
 
     private string _libraryName = "";
     private List<SeriesGroupDto>? _seriesGroups;
+    private List<SubtitleEntryDto>? _flatEntries;
     private bool _isFlat;
     private bool _isLoading = true;
     private bool _error;
@@ -99,6 +156,12 @@ else
             // Flat library detection: single series, or all seasons match series name
             _isFlat = _seriesGroups != null && _seriesGroups.Count == 1 &&
                 _seriesGroups[0].Seasons.All(s => s.SeasonName == _seriesGroups[0].SeriesName);
+
+            if (_isFlat && _seriesGroups != null)
+            {
+                var detail = await LibraryApiService.GetSeriesDetailAsync(_libraryName, _seriesGroups[0].SeriesName);
+                _flatEntries = detail?.Seasons.SelectMany(s => s.Entries).OrderBy(e => e.FileName).ToList();
+            }
         }
         catch
         {
@@ -114,5 +177,11 @@ else
     private void NavigateToSeries(string seriesSlug)
     {
         NavigationManager.NavigateTo($"/library/{LibrarySlug}/{seriesSlug}");
+    }
+
+    private async Task ToggleWanted(SubtitleEntryDto entry)
+    {
+        await LibraryApiService.UpdateWantedStatusAsync(entry.Id, !entry.IsWanted);
+        await LoadData();
     }
 }
