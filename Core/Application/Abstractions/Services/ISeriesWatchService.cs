@@ -44,5 +44,5 @@ public interface ISeriesWatchService
     /// Retrieves series groups with statistics and watch status for UI.
     /// </summary>
     /// <returns>The task result contains series groups with season breakdowns and watch flags.</returns>
-    Task<List<SeriesGroupDto>> GetSeriesGroupsWithWatchStatusAsync();
+    Task<List<SeriesGroupDto>> GetSeriesGroupsWithWatchStatusAsync(string? library = null);
 }

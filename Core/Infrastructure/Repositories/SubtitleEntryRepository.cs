@@ -1,6 +1,7 @@
 using ErrorOr;
 using Microsoft.EntityFrameworkCore;
 using Translarr.Core.Application.Abstractions.Repositories;
+using Translarr.Core.Application.Helpers;
 using Translarr.Core.Application.Models;
 using Translarr.Core.Infrastructure.Persistence;
 using Translarr.Core.Infrastructure.Persistence.Daos;
@@ -62,6 +63,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             throw new InvalidOperationException($"SubtitleEntry with Id {entry.Id} not found");
         }
 
+        dao.Library = entry.Library;
         dao.Series = entry.Series;
         dao.Season = entry.Season;
         dao.FileName = entry.FileName;
@@ -182,9 +184,12 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
-    public async Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted)
+    public async Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted, string? library = null)
     {
         var query = context.SubtitleEntries.Where(e => e.Series == seriesName);
+
+        if (library != null)
+            query = query.Where(e => e.Library == library);
 
         if (seasonName != null)
             query = query.Where(e => e.Season == seasonName);
@@ -194,11 +199,33 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
-    public async Task<List<SeriesGroupDto>> GetSeriesGroupsAsync()
+    public Task<List<SeriesGroupDto>> GetSeriesGroupsAsync()
+        => GetSeriesGroupsInternalAsync();
+
+    /// <inheritdoc />
+    public async Task<List<string>> GetDistinctLibrariesAsync()
     {
-        // Group by series and season, calculate stats
-        var groupedData = await context.SubtitleEntries
+        return await context.SubtitleEntries
             .AsNoTracking()
+            .Select(e => e.Library)
+            .Where(l => l != "")
+            .Distinct()
+            .OrderBy(l => l)
+            .ToListAsync();
+    }
+
+    /// <inheritdoc />
+    public Task<List<SeriesGroupDto>> GetSeriesGroupsByLibraryAsync(string library)
+        => GetSeriesGroupsInternalAsync(library);
+
+    private async Task<List<SeriesGroupDto>> GetSeriesGroupsInternalAsync(string? library = null)
+    {
+        var query = context.SubtitleEntries.AsNoTracking();
+
+        if (library != null)
+            query = query.Where(e => e.Library == library);
+
+        var groupedData = await query
             .GroupBy(e => new { e.Series, e.Season })
             .Select(g => new
             {
@@ -210,8 +237,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
             })
             .ToListAsync();
 
-        // Group by series
-        var seriesGroups = groupedData
+        return groupedData
             .GroupBy(g => g.Series)
             .Select(sg => new SeriesGroupDto
             {
@@ -225,19 +251,32 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
                     TotalFiles = s.TotalFiles,
                     WantedFiles = s.WantedFiles,
                     ProcessedFiles = s.ProcessedFiles
-                }).ToList()
+                }).OrderBy(s => NaturalSort.Key(s.SeasonName)).ToList()
             })
             .OrderBy(s => s.SeriesName)
             .ToList();
-
-        return seriesGroups;
     }
+
+    /// <inheritdoc />
+    public async Task<List<SubtitleEntryDto>> GetEntriesByLibraryAndSeriesAsync(string library, string series)
+    {
+        var entries = await context.SubtitleEntries
+            .AsNoTracking()
+            .Where(e => e.Library == library && e.Series == series)
+            .OrderBy(e => e.Season)
+            .ThenBy(e => e.FileName)
+            .ToListAsync();
+
+        return entries.Select(MapToDto).ToList();
+    }
+
 
     private static SubtitleEntryDto MapToDto(SubtitleEntryDao dao)
     {
         return new SubtitleEntryDto
         {
             Id = dao.Id,
+            Library = dao.Library,
             Series = dao.Series,
             Season = dao.Season,
             FileName = dao.FileName,
@@ -258,6 +297,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         return new SubtitleEntryDao
         {
             Id = dto.Id,
+            Library = dto.Library,
             Series = dto.Series,
             Season = dto.Season,
             FileName = dto.FileName,

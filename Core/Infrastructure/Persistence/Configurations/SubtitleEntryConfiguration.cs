@@ -15,7 +15,12 @@ public class SubtitleEntryConfiguration : IEntityTypeConfiguration<SubtitleEntry
         builder.Property(x => x.Id)
             .ValueGeneratedOnAdd()
             .IsRequired();
-        
+
+        builder.Property(e => e.Library)
+            .IsRequired()
+            .HasMaxLength(256)
+            .HasDefaultValue("");
+
         builder.Property(x => x.Series)
             .IsRequired()
             .HasMaxLength(256);
@@ -63,6 +68,7 @@ public class SubtitleEntryConfiguration : IEntityTypeConfiguration<SubtitleEntry
         builder.HasIndex(x => x.ForceProcess);
         builder.HasIndex(x => x.FilePath).IsUnique();
         builder.HasIndex(x => new { x.Series, x.Season });
+        builder.HasIndex(e => new { e.Library, e.Series, e.Season });
     }
 }
 

@@ -3,6 +3,7 @@ namespace Translarr.Core.Infrastructure.Persistence.Daos;
 public class SubtitleEntryDao
 {
     public int Id { get; set; }
+    public string Library { get; set; } = "";
     public required string Series { get; set; }
     public required string Season { get; set; }
     public required string FileName { get; set; }

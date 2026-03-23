@@ -3,6 +3,7 @@ namespace Translarr.Core.Application.Models;
 public class SubtitleEntryDto
 {
     public int Id { get; set; }
+    public string Library { get; set; } = "";
     public required string Series { get; set; }
     public required string Season { get; set; }
     public required string FileName { get; set; }

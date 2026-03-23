@@ -85,13 +85,35 @@ public interface ISubtitleEntryRepository
     /// <param name="seriesName">The name of the series.</param>
     /// <param name="seasonName">The name of the season (null to update entire series).</param>
     /// <param name="isWanted">The new wanted status.</param>
+    /// <param name="library">Optional library name to scope the update.</param>
     /// <returns>The number of entries updated.</returns>
-    Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted);
+    Task<int> BulkUpdateWantedAsync(string seriesName, string? seasonName, bool isWanted, string? library = null);
 
     /// <summary>
     /// Retrieves series groups with statistics for UI display.
     /// </summary>
     /// <returns>The task result contains a list of <see cref="SeriesGroupDto"/> with nested season statistics.</returns>
     Task<List<SeriesGroupDto>> GetSeriesGroupsAsync();
+
+    /// <summary>
+    /// Retrieves all distinct library names from the subtitle entries.
+    /// </summary>
+    /// <returns>Sorted list of distinct library names.</returns>
+    Task<List<string>> GetDistinctLibrariesAsync();
+
+    /// <summary>
+    /// Retrieves series groups with statistics scoped to a specific library.
+    /// </summary>
+    /// <param name="library">The library name to filter by.</param>
+    /// <returns>The task result contains a list of <see cref="SeriesGroupDto"/> with nested season statistics.</returns>
+    Task<List<SeriesGroupDto>> GetSeriesGroupsByLibraryAsync(string library);
+
+    /// <summary>
+    /// Retrieves all subtitle entries for a given library and series.
+    /// </summary>
+    /// <param name="library">The library name.</param>
+    /// <param name="series">The series name.</param>
+    /// <returns>The task result contains a list of <see cref="SubtitleEntryDto"/> ordered by season then filename.</returns>
+    Task<List<SubtitleEntryDto>> GetEntriesByLibraryAndSeriesAsync(string library, string series);
 }
 

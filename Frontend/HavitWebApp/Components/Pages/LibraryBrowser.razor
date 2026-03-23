@@ -1,0 +1,133 @@
+@page "/library/{LibrarySlug}"
+@inject LibraryApiService LibraryApiService
+@inject NavigationManager NavigationManager
+@using Translarr.Core.Application.Models
+@using Translarr.Frontend.HavitWebApp.Helpers
+
+<PageTitle>@_libraryName</PageTitle>
+
+<h2>@_libraryName</h2>
+
+@if (_isLoading)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (_error)
+{
+    <div class="alert alert-danger">
+        <p>Failed to load library.</p>
+        <button class="btn btn-outline-danger btn-sm" @onclick="LoadData">Retry</button>
+    </div>
+}
+else if (_seriesGroups == null || _seriesGroups.Count == 0)
+{
+    <div class="alert alert-info">No media found in this library.</div>
+}
+else if (_isFlat)
+{
+    @* Flat library (e.g. Movies) — show file table directly *@
+    <p class="text-muted">@_seriesGroups[0].TotalFiles files &middot; @_seriesGroups[0].ProcessedFiles translated</p>
+
+    @if (_flatEntries != null)
+    {
+        <SubtitleEntryTable Entries="_flatEntries" OnWantedToggled="ToggleWanted" />
+    }
+}
+else
+{
+    <div class="row">
+        @foreach (var series in _seriesGroups)
+        {
+            var seriesSlug = SlugHelper.ToSlug(series.SeriesName);
+            <div class="col-md-4 mb-3">
+                <div class="card h-100" style="cursor: pointer"
+                     @onclick="() => NavigateToSeries(seriesSlug)">
+                    <div class="card-body">
+                        <h5 class="card-title">@series.SeriesName</h5>
+                        <p class="card-text text-muted">
+                            @series.TotalFiles files
+                            &middot; @series.ProcessedFiles translated
+                            @if (series.IsWatched)
+                            {
+                                <span class="badge bg-success ms-2">Watched</span>
+                            }
+                        </p>
+                        @{
+                            var pct = series.TotalFiles > 0
+                                ? (int)(100.0 * series.ProcessedFiles / series.TotalFiles)
+                                : 0;
+                        }
+                        <div class="progress" style="height: 6px">
+                            <div class="progress-bar bg-success" style="width: @(pct)%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string LibrarySlug { get; set; } = "";
+
+    private string _libraryName = "";
+    private List<SeriesGroupDto>? _seriesGroups;
+    private List<SubtitleEntryDto>? _flatEntries;
+    private bool _isFlat;
+    private bool _isLoading = true;
+    private bool _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        _error = false;
+        StateHasChanged();
+
+        try
+        {
+            var libraries = await LibraryApiService.GetLibrariesAsync();
+            _libraryName = SlugHelper.FromSlug(LibrarySlug, libraries ?? []);
+
+            _seriesGroups = await LibraryApiService.GetSeriesByLibraryAsync(_libraryName);
+
+            // Flat library detection: single series, or all seasons match series name
+            _isFlat = _seriesGroups != null && _seriesGroups.Count == 1 &&
+                _seriesGroups[0].Seasons.All(s => s.SeasonName == _seriesGroups[0].SeriesName);
+
+            if (_isFlat && _seriesGroups != null)
+            {
+                var detail = await LibraryApiService.GetSeriesDetailAsync(_libraryName, _seriesGroups[0].SeriesName);
+                _flatEntries = detail?.Seasons.SelectMany(s => s.Entries).OrderBy(e => e.FileName).ToList();
+            }
+        }
+        catch
+        {
+            _error = true;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void NavigateToSeries(string seriesSlug)
+    {
+        NavigationManager.NavigateTo($"/library/{LibrarySlug}/{seriesSlug}");
+    }
+
+    private async Task ToggleWanted(SubtitleEntryDto entry)
+    {
+        await LibraryApiService.UpdateWantedStatusAsync(entry.Id, !entry.IsWanted);
+        await LoadData();
+    }
+}

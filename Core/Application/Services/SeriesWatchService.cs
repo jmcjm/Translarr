@@ -70,9 +70,11 @@ public class SeriesWatchService(
     }
 
     /// <inheritdoc />
-    public async Task<List<SeriesGroupDto>> GetSeriesGroupsWithWatchStatusAsync()
+    public async Task<List<SeriesGroupDto>> GetSeriesGroupsWithWatchStatusAsync(string? library = null)
     {
-        var seriesGroups = await subtitleEntryRepository.GetSeriesGroupsAsync();
+        var seriesGroups = library != null
+            ? await subtitleEntryRepository.GetSeriesGroupsByLibraryAsync(library)
+            : await subtitleEntryRepository.GetSeriesGroupsAsync();
         var watchConfigs = await watchConfigRepository.GetAllAsync();
 
         // Build a lookup for watch status

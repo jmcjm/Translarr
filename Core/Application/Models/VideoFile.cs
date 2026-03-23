@@ -6,5 +6,6 @@ public class VideoFile
     public required string FileName { get; set; }
     public required string SeriesNumber { get; set; }
     public required string SeasonNumber { get; set; }
+    public required string Library { get; set; }
 }
 

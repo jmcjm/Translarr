@@ -49,6 +49,19 @@ public static class LibraryEndpoints
             .Produces<BulkUpdateResult>()
             .Produces<ProblemDetails>(StatusCodes.Status400BadRequest);
 
+        group.MapGet("/browse", GetLibraries)
+            .WithName("GetLibraries")
+            .Produces<List<string>>();
+
+        group.MapGet("/browse/series", GetSeriesByLibrary)
+            .WithName("GetSeriesByLibrary")
+            .Produces<List<SeriesGroupDto>>();
+
+        group.MapGet("/browse/series/detail", GetSeriesDetail)
+            .WithName("GetSeriesDetail")
+            .Produces<SeriesDetailDto>()
+            .Produces(StatusCodes.Status404NotFound);
+
         return group;
     }
 
@@ -203,14 +216,46 @@ public static class LibraryEndpoints
         [FromQuery] string series,
         [FromQuery] string? season,
         [FromQuery] bool wanted,
+        [FromQuery] string? library,
         [FromServices] ILibraryService service)
     {
-        var result = await service.BulkSetWantedAsync(series, season, wanted);
+        var result = await service.BulkSetWantedAsync(series, season, wanted, library);
 
         if (result.IsError)
             return ErrorTypeMapper.MapErrorsToProblemResponse(result);
 
         return Results.Ok(new BulkUpdateResult(result.Value));
+    }
+
+    private static async Task<IResult> GetLibraries([FromServices] ILibraryService libraryService)
+    {
+        var result = await libraryService.GetLibrariesAsync();
+
+        if (result.IsError)
+            return ErrorTypeMapper.MapErrorsToProblemResponse(result);
+
+        return Results.Ok(result.Value);
+    }
+
+    private static async Task<IResult> GetSeriesByLibrary(
+        [FromQuery] string library,
+        [FromServices] ISeriesWatchService seriesWatchService)
+    {
+        var result = await seriesWatchService.GetSeriesGroupsWithWatchStatusAsync(library);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetSeriesDetail(
+        [FromQuery] string library,
+        [FromQuery] string series,
+        [FromServices] ILibraryService libraryService)
+    {
+        var result = await libraryService.GetSeriesDetailAsync(library, series);
+
+        if (result.IsError)
+            return ErrorTypeMapper.MapErrorsToProblemResponse(result);
+
+        return Results.Ok(result.Value);
     }
 
     private static IResult GetScanStatus()

@@ -87,4 +87,32 @@ public class LibraryApiService(AuthenticatedApiClientFactory apiClientFactory)
             new { IsWanted = force });
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<List<string>?> GetLibrariesAsync()
+    {
+        var client = apiClientFactory.CreateClient();
+        var response = await client.GetAsync("/api/library/browse");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<string>>();
+    }
+
+    public async Task<List<SeriesGroupDto>?> GetSeriesByLibraryAsync(string libraryName)
+    {
+        var client = apiClientFactory.CreateClient();
+        var encodedLibrary = Uri.EscapeDataString(libraryName);
+        var response = await client.GetAsync($"/api/library/browse/series?library={encodedLibrary}");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<SeriesGroupDto>>();
+    }
+
+    public async Task<SeriesDetailDto?> GetSeriesDetailAsync(string libraryName, string seriesName)
+    {
+        var client = apiClientFactory.CreateClient();
+        var encodedLibrary = Uri.EscapeDataString(libraryName);
+        var encodedSeries = Uri.EscapeDataString(seriesName);
+        var response = await client.GetAsync(
+            $"/api/library/browse/series/detail?library={encodedLibrary}&series={encodedSeries}");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SeriesDetailDto>();
+    }
 }
