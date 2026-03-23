@@ -91,61 +91,7 @@ else
             @if (isExpanded)
             {
                 <div class="card-body p-0">
-                    <table class="table table-sm table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>File Name</th>
-                                <th>Status</th>
-                                <th>Wanted</th>
-                                <th>Already Has</th>
-                                <th>Last Scanned</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var entry in season.Entries)
-                            {
-                                <tr>
-                                    <td>@entry.FileName</td>
-                                    <td>
-                                        @if (entry.IsProcessed)
-                                        {
-                                            <span class="badge bg-success">Processed</span>
-                                        }
-                                        else if (!string.IsNullOrEmpty(entry.ErrorMessage))
-                                        {
-                                            <span class="badge bg-danger" title="@entry.ErrorMessage">Error</span>
-                                        }
-                                        else if (entry.HasBitmapSubtitlesOnly)
-                                        {
-                                            <span class="badge bg-info">Bitmap</span>
-                                        }
-                                        else if (entry.IsWanted)
-                                        {
-                                            <span class="badge bg-warning">Pending</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">Idle</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox"
-                                                   checked="@entry.IsWanted"
-                                                   @onchange="() => ToggleWanted(entry)" />
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if (entry.AlreadyHad)
-                                        {
-                                            <span class="text-success">✓</span>
-                                        }
-                                    </td>
-                                    <td>@entry.LastScanned.ToString("g")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <SubtitleEntryTable Entries="season.Entries" OnWantedToggled="ToggleWanted" />
                 </div>
             }
         </div>

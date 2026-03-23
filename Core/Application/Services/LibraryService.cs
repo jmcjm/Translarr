@@ -1,6 +1,7 @@
 using ErrorOr;
 using Translarr.Core.Application.Abstractions.Repositories;
 using Translarr.Core.Application.Abstractions.Services;
+using Translarr.Core.Application.Helpers;
 using Translarr.Core.Application.Models;
 
 namespace Translarr.Core.Application.Services;
@@ -102,7 +103,7 @@ public class LibraryService(
 
         var seasons = new List<SeasonDetailDto>();
         foreach (var seasonGroup in entries.GroupBy(e => e.Season)
-            .OrderBy(g => System.Text.RegularExpressions.Regex.Replace(g.Key, @"\d+", m => m.Value.PadLeft(10, '0'))))
+            .OrderBy(g => NaturalSort.Key(g.Key)))
         {
             var isSeasonWatched = isSeriesWatched ||
                 await seriesWatchService.ShouldAutoMarkWantedAsync(series, seasonGroup.Key);

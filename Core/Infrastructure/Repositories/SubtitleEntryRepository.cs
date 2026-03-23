@@ -1,6 +1,7 @@
 using ErrorOr;
 using Microsoft.EntityFrameworkCore;
 using Translarr.Core.Application.Abstractions.Repositories;
+using Translarr.Core.Application.Helpers;
 using Translarr.Core.Application.Models;
 using Translarr.Core.Infrastructure.Persistence;
 using Translarr.Core.Infrastructure.Persistence.Daos;
@@ -198,44 +199,8 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
-    public async Task<List<SeriesGroupDto>> GetSeriesGroupsAsync()
-    {
-        // Group by series and season, calculate stats
-        var groupedData = await context.SubtitleEntries
-            .AsNoTracking()
-            .GroupBy(e => new { e.Series, e.Season })
-            .Select(g => new
-            {
-                g.Key.Series,
-                g.Key.Season,
-                TotalFiles = g.Count(),
-                WantedFiles = g.Count(e => e.IsWanted),
-                ProcessedFiles = g.Count(e => e.IsProcessed)
-            })
-            .ToListAsync();
-
-        // Group by series
-        var seriesGroups = groupedData
-            .GroupBy(g => g.Series)
-            .Select(sg => new SeriesGroupDto
-            {
-                SeriesName = sg.Key,
-                TotalFiles = sg.Sum(s => s.TotalFiles),
-                WantedFiles = sg.Sum(s => s.WantedFiles),
-                ProcessedFiles = sg.Sum(s => s.ProcessedFiles),
-                Seasons = sg.Select(s => new SeasonGroupDto
-                {
-                    SeasonName = s.Season,
-                    TotalFiles = s.TotalFiles,
-                    WantedFiles = s.WantedFiles,
-                    ProcessedFiles = s.ProcessedFiles
-                }).OrderBy(s => NaturalSortKey(s.SeasonName)).ToList()
-            })
-            .OrderBy(s => s.SeriesName)
-            .ToList();
-
-        return seriesGroups;
-    }
+    public Task<List<SeriesGroupDto>> GetSeriesGroupsAsync()
+        => GetSeriesGroupsInternalAsync();
 
     /// <inheritdoc />
     public async Task<List<string>> GetDistinctLibrariesAsync()
@@ -250,11 +215,17 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
     }
 
     /// <inheritdoc />
-    public async Task<List<SeriesGroupDto>> GetSeriesGroupsByLibraryAsync(string library)
+    public Task<List<SeriesGroupDto>> GetSeriesGroupsByLibraryAsync(string library)
+        => GetSeriesGroupsInternalAsync(library);
+
+    private async Task<List<SeriesGroupDto>> GetSeriesGroupsInternalAsync(string? library = null)
     {
-        var groupedData = await context.SubtitleEntries
-            .AsNoTracking()
-            .Where(e => e.Library == library)
+        var query = context.SubtitleEntries.AsNoTracking();
+
+        if (library != null)
+            query = query.Where(e => e.Library == library);
+
+        var groupedData = await query
             .GroupBy(e => new { e.Series, e.Season })
             .Select(g => new
             {
@@ -280,7 +251,7 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
                     TotalFiles = s.TotalFiles,
                     WantedFiles = s.WantedFiles,
                     ProcessedFiles = s.ProcessedFiles
-                }).OrderBy(s => NaturalSortKey(s.SeasonName)).ToList()
+                }).OrderBy(s => NaturalSort.Key(s.SeasonName)).ToList()
             })
             .OrderBy(s => s.SeriesName)
             .ToList();
@@ -299,8 +270,6 @@ public class SubtitleEntryRepository(TranslarrDbContext context) : ISubtitleEntr
         return entries.Select(MapToDto).ToList();
     }
 
-    private static string NaturalSortKey(string value)
-        => System.Text.RegularExpressions.Regex.Replace(value, @"\d+", m => m.Value.PadLeft(10, '0'));
 
     private static SubtitleEntryDto MapToDto(SubtitleEntryDao dao)
     {

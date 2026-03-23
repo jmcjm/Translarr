@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+using Translarr.Core.Application.Helpers;
 
 namespace Translarr.Frontend.HavitWebApp.Helpers;
 
@@ -22,11 +22,7 @@ public static class SlugHelper
     }
 
     /// <summary>
-    /// Natural sort key: "Season 2" sorts before "Season 10".
-    /// Pads numeric segments to 10 digits for lexicographic comparison.
+    /// Delegates to <see cref="NaturalSort.Key"/> in Application layer.
     /// </summary>
-    public static string NaturalSortKey(string value)
-    {
-        return Regex.Replace(value, @"\d+", m => m.Value.PadLeft(10, '0'));
-    }
+    public static string NaturalSortKey(string value) => NaturalSort.Key(value);
 }
