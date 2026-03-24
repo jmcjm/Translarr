@@ -18,14 +18,17 @@
 ## Key Features
 
 *   **Automated Library Scanning:** Recursively scans your media directories to discover all video files.
-*   **Smart Subtitle Detection:** Automatically checks for existing preferred-language subtitles to avoid redundant work. Filters out bitmap-based subtitles (PGS, VobSub) that can't be translated without OCR.
+*   **Smart Subtitle Detection:** Automatically checks for existing preferred-language subtitles to avoid redundant work.
 *   **Intelligent Stream Selection:** Analyzes embedded subtitle tracks to select the best source for translation (e.g., prioritizing non-SDH English tracks).
+*   **Bitmap Subtitle OCR:** Automatically detects bitmap-based subtitles (PGS, VobSub) and uses LLM-powered OCR to extract text for translation.
 *   **AI-Powered Translation:** Supports multiple LLM providers (Google Gemini, OpenAI, Anthropic, and more) for high-quality, context-aware subtitle translation. Configurable per-provider with their respective API keys and models.
 *   **Modern Web UI:** A clean, responsive dashboard built with Blazor Server.
+*   **Hierarchical Library Navigation:** Dynamic library detection from media folder structure. Browse by library (TV Shows, Movies, Anime), drill into series and seasons, manage auto-watch and bulk wanted per series.
+*   **Real-Time Progress:** SignalR-driven live updates for scan and translation progress on the dashboard.
 *   **Authentication:** Single admin account with JWT-based auth. Setup wizard on first launch, login with "Remember me" support. Rate-limited login with account lockout.
 *   **Translation Control:** Start and stop translations at any time from the dashboard.
 *   **Dashboard & Statistics:** Get a quick overview of your library's state: total files, processed, waiting, and errors.
-*   **Powerful Library Management:** Search, filter, and sort your media files. Manually toggle the "wanted" status for individual files.
+*   **Powerful Library Management:** Search, filter, and sort your media files. Manually toggle the "wanted" status for individual files. Auto-watch series/seasons for automatic queueing of new episodes.
 *   **Customizable Settings:** Easily configure your LLM provider and API key, select the AI model, customize the system prompt, set rate limits, change password, and more.
 
 ## Technology Stack
@@ -107,9 +110,9 @@ The backend follows Clean Architecture principles with `Application`, `Infrastru
 ## Usage Workflow
 
 1.  **Scan:** Go to the **Dashboard** and click **Scan Library**. This will populate the application with your media files.
-2.  **Select:** Navigate to the **Library** page. Files that don't have subtitles in your preferred language can be marked for translation. Toggle the **Wanted** switch for any files you wish to translate.
-3.  **Translate:** Return to the **Dashboard** and click **Start Translation**. Translarr will begin processing the "wanted" files in the queue. You can stop the translation at any time with the **Stop Translation** button.
-4.  **Monitor:** You can see the real-time translation progress on the Dashboard. Once completed, the new `.srt` subtitle file (e.g., `My.Episode.S01E01.pl.srt`) will be saved in the same directory as its video file.
+2.  **Select:** Navigate to a library from the sidebar (e.g., **TV Shows**), browse series, and mark files for translation. You can auto-watch entire series or seasons to automatically queue new episodes. Or use **All Entries** for a flat view with search and filters.
+3.  **Translate:** Return to the **Dashboard** and click **Start Translation**. Translarr will process text-based subtitles first. Files with bitmap-only subtitles (PGS, VobSub) are automatically detected and routed to the **OCR pipeline** — click **Start Bitmap Translation** to process those.
+4.  **Monitor:** Real-time progress is pushed to the Dashboard via SignalR. Once completed, the new `.srt` subtitle file (e.g., `My.Episode.S01E01.pl.srt`) will be saved in the same directory as its video file.
 
 ## Screenshots
 
@@ -134,9 +137,6 @@ The backend follows Clean Architecture principles with `Application`, `Infrastru
 
 *   **SELinux Compatibility:**
     *   Containers do not work on systems with SELinux set to `enforcing`.
-
-*   **OCR Support:**
-    *   Bitmap-based subtitles (PGS, VobSub) are currently skipped. OCR integration would allow extracting text from these for translation.
 
 ## License
 
