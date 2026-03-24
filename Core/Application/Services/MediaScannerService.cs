@@ -138,6 +138,7 @@ public class MediaScannerService(
             try
             {
                 var existingEntry = await repository.GetByFilePathAsync(videoFile.FilePath);
+                // TODO: Also check for embedded subtitle streams in preferred language via FFprobe
                 var subtitleFileName = $"{Path.GetFileNameWithoutExtension(videoFile.FileName)}.{preferredLang}.srt";
                 var subtitlePath = Path.Combine(Path.GetDirectoryName(videoFile.FilePath)!, subtitleFileName);
                 var alreadyHas = File.Exists(subtitlePath);
@@ -170,16 +171,14 @@ public class MediaScannerService(
                 else
                 {
                     // Update existing
-                    var hadSubtitles = existingEntry.AlreadyHad;
                     existingEntry.AlreadyHad = alreadyHas;
                     existingEntry.LastScanned = DateTime.UtcNow;
                     existingEntry.Library = videoFile.Library;
 
-                    // If subtitles disappeared, reset processing status
-                    if (hadSubtitles && !alreadyHas)
+                    // Reset if translated subtitle file disappeared from disk
+                    if (!alreadyHas && existingEntry.IsProcessed && existingEntry.ErrorMessage == null)
                     {
                         existingEntry.IsProcessed = false;
-                        existingEntry.ErrorMessage = null;
                     }
 
                     await repository.UpdateAsync(existingEntry);
