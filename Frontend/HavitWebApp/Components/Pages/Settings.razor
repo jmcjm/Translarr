@@ -139,6 +139,33 @@
                     </HxButton>
                 </BodyTemplate>
             </HxCard>
+
+            <!-- Change Password -->
+            <HxCard CssClass="mb-4">
+                <HeaderTemplate>
+                    <h5 class="mb-0">Change Password</h5>
+                </HeaderTemplate>
+                <BodyTemplate>
+                    <div class="mb-3">
+                        <label class="form-label">Current Password</label>
+                        <input type="password" class="form-control" @bind="_currentPassword" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-control" @bind="_newPassword" />
+                        <div class="form-text">Minimum @AuthOptions.Value.MinPasswordLength characters</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" @bind="_confirmNewPassword" />
+                    </div>
+                    <HxButton Color="ThemeColor.Warning"
+                              OnClick="ChangePassword"
+                              Enabled="!_isChangingPassword">
+                        Change Password
+                    </HxButton>
+                </BodyTemplate>
+            </HxCard>
         </div>
 
         <!-- Right Column -->
@@ -176,6 +203,84 @@
                 </HeaderTemplate>
                 <BodyTemplate>
                     <div class="mb-3">
+                        <label class="form-label">OCR Provider</label>
+                        <select class="form-select" @bind="_selectedOcrProvider" @bind:after="OnOcrProviderChanged">
+                            @foreach (var provider in OcrProviders)
+                            {
+                                <option value="@provider.Name">@provider.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    @if (IsCustomOcrProvider)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">OCR Base URL</label>
+                            <input type="text"
+                                   class="form-control"
+                                   @bind="_ocrBaseUrl"
+                                   placeholder="https://api.example.com/v1/" />
+                            <div class="form-text">OpenAI-compatible API endpoint</div>
+                        </div>
+                    }
+
+                    @if (_selectedOcrProvider != "(Use main model)")
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">OCR API Key</label>
+                            <input type="password"
+                                   class="form-control"
+                                   @bind="_ocrApiKey" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">OCR Model</label>
+                            @{
+                                var ocrProvider = OcrProviders.FirstOrDefault(p => p.Name == _selectedOcrProvider);
+                                var ocrModels = ocrProvider?.Models ?? [];
+                                var isCustomOcrModel = ocrModels.Length == 0 || !ocrModels.Any(m => m.Id == _ocrModel);
+                            }
+                            @if (ocrModels.Length > 0)
+                            {
+                                <select class="form-select mb-2" value="@(isCustomOcrModel ? "__custom__" : _ocrModel)" @onchange="OnOcrModelDropdownChanged">
+                                    @foreach (var model in ocrModels)
+                                    {
+                                        <option value="@model.Id">@model.Id</option>
+                                    }
+                                    <option value="__custom__">Custom...</option>
+                                </select>
+                            }
+                            @if (isCustomOcrModel || ocrModels.Length == 0)
+                            {
+                                <input type="text"
+                                       class="form-control"
+                                       @bind="_ocrModel"
+                                       placeholder="e.g., gemini-2.5-flash-lite" />
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">OCR Max Output Tokens: @_ocrMaxOutputTokens</label>
+                            <input type="number"
+                                   class="form-control"
+                                   min="1000"
+                                   @bind="_ocrMaxOutputTokens" />
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">OCR Temperature: @_ocrTemperature.ToString("F2")</label>
+                        <input type="range"
+                               class="form-range"
+                               min="0"
+                               max="1"
+                               step="0.05"
+                               @bind="_ocrTemperature"
+                               @bind:event="oninput" />
+                        <div class="form-text">Recommended: 0 for deterministic OCR</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">OCR Batch Size</label>
                         <input type="number"
                                class="form-control"
@@ -190,37 +295,11 @@
                         <textarea class="form-control"
                                   rows="8"
                                   @bind="_ocrSystemPrompt"></textarea>
-                        <div class="form-text">Use {timestamps} for the timestamp list and {preferredLang} for the target language.</div>
+                        <div class="form-text">Use {timestamps} for the timestamp list.</div>
                     </div>
                 </BodyTemplate>
             </HxCard>
 
-            <!-- Change Password -->
-            <HxCard CssClass="mb-4">
-                <HeaderTemplate>
-                    <h5 class="mb-0">Change Password</h5>
-                </HeaderTemplate>
-                <BodyTemplate>
-                    <div class="mb-3">
-                        <label class="form-label">Current Password</label>
-                        <input type="password" class="form-control" @bind="_currentPassword" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">New Password</label>
-                        <input type="password" class="form-control" @bind="_newPassword" />
-                        <div class="form-text">Minimum @AuthOptions.Value.MinPasswordLength characters</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" @bind="_confirmNewPassword" />
-                    </div>
-                    <HxButton Color="ThemeColor.Warning"
-                              OnClick="ChangePassword"
-                              Enabled="!_isChangingPassword">
-                        Change Password
-                    </HxButton>
-                </BodyTemplate>
-            </HxCard>
         </div>
 
         <!-- Automation (Full Width) -->
@@ -328,6 +407,13 @@
 
     private int _ocrBatchSize = 15;
     private string _ocrSystemPrompt = "";
+    private string _ocrApiKey = "";
+    private string _ocrBaseUrl = "";
+    private string _ocrModel = "";
+    private double _ocrTemperature = 0;
+    private int _ocrMaxOutputTokens = 65535;
+    private string _selectedOcrProvider = "";
+    private bool IsCustomOcrProvider => _selectedOcrProvider == "Custom";
 
     private string _currentPassword = "";
     private string _newPassword = "";
@@ -362,6 +448,50 @@
         else
         {
             _llmModel = "";
+        }
+    }
+
+    private static readonly LlmProvider[] OcrProviders =
+    [
+        new("(Use main model)", "", []),
+        ..Providers
+    ];
+
+    private void OnOcrProviderChanged()
+    {
+        var provider = OcrProviders.FirstOrDefault(p => p.Name == _selectedOcrProvider);
+        if (provider != null && _selectedOcrProvider != "(Use main model)" && !IsCustomOcrProvider)
+        {
+            _ocrBaseUrl = provider.BaseUrl;
+            if (provider.Models.Length > 0)
+            {
+                _ocrModel = provider.Models[0].Id;
+                _ocrMaxOutputTokens = provider.Models[0].MaxOutputTokens;
+            }
+        }
+        else if (_selectedOcrProvider == "(Use main model)")
+        {
+            _ocrBaseUrl = "";
+            _ocrModel = "";
+            _ocrApiKey = "";
+            _ocrMaxOutputTokens = 65535;
+        }
+    }
+
+    private void OnOcrModelDropdownChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (value != null && value != "__custom__")
+        {
+            _ocrModel = value;
+            var provider = OcrProviders.FirstOrDefault(p => p.Name == _selectedOcrProvider);
+            var model = provider?.Models.FirstOrDefault(m => m.Id == value);
+            if (model != null)
+                _ocrMaxOutputTokens = model.MaxOutputTokens;
+        }
+        else
+        {
+            _ocrModel = "";
         }
     }
 
@@ -452,6 +582,18 @@
             if (int.TryParse(GetSettingValue("OcrBatchSize"), out var ocrBatch))
                 _ocrBatchSize = ocrBatch;
             _ocrSystemPrompt = GetSettingValue("OcrSystemPrompt");
+            _ocrApiKey = GetSettingValue("OcrLlmApiKey");
+            _ocrBaseUrl = GetSettingValue("OcrLlmBaseUrl");
+            _ocrModel = GetSettingValue("OcrLlmModel");
+            _selectedOcrProvider = string.IsNullOrWhiteSpace(_ocrBaseUrl)
+                ? "(Use main model)"
+                : OcrProviders.FirstOrDefault(p => p.BaseUrl == _ocrBaseUrl)?.Name ?? "Custom";
+
+            if (double.TryParse(GetSettingValue("OcrTemperature"), out var ocrTemp))
+                _ocrTemperature = ocrTemp;
+
+            if (int.TryParse(GetSettingValue("OcrMaxOutputTokens"), out var ocrMaxTokens))
+                _ocrMaxOutputTokens = ocrMaxTokens;
         }
         catch (Exception ex)
         {
@@ -498,6 +640,11 @@
             // Save OCR settings
             if (!await TrySaveSetting("OcrBatchSize", _ocrBatchSize.ToString())) errorCount++;
             if (!await TrySaveSetting("OcrSystemPrompt", _ocrSystemPrompt)) errorCount++;
+            if (!await TrySaveSetting("OcrLlmApiKey", _ocrApiKey)) errorCount++;
+            if (!await TrySaveSetting("OcrLlmBaseUrl", _ocrBaseUrl)) errorCount++;
+            if (!await TrySaveSetting("OcrLlmModel", _ocrModel)) errorCount++;
+            if (!await TrySaveSetting("OcrTemperature", _ocrTemperature.ToString("F2"))) errorCount++;
+            if (!await TrySaveSetting("OcrMaxOutputTokens", _ocrMaxOutputTokens.ToString())) errorCount++;
 
             if (errorCount == 0)
             {

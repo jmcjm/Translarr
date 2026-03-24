@@ -8,5 +8,6 @@ public interface ISettingsService
     Task UpdateSettingAsync(string key, string value);
     Task<List<AppSettingDto>> GetAllSettingsAsync();
     Task<LlmSettingsDto> GetLlmSettingsAsync();
+    Task<LlmSettingsDto> GetOcrLlmSettingsAsync();
 }
 

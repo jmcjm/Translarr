@@ -12,7 +12,7 @@ public class BitmapSubtitleTranslator(
 {
     private const string WorkDir = "/tmp/translarr";
 
-    public async Task<string> TranslateBitmapSubtitlesAsync(
+    public async Task<string> ExtractBitmapSubtitlesAsync(
         string videoPath, int streamIndex, LlmSettingsDto settings,
         Action<int, int>? onBatchProgress = null,
         CancellationToken cancellationToken = default)
@@ -44,7 +44,7 @@ public class BitmapSubtitleTranslator(
             var frames = PgsRenderer.RenderAll(subtitles, framesDir);
             logger.LogInformation("Rendered {count} frames", frames.Count);
 
-            // 4. Batch OCR + translate
+            // 4. Batch OCR extraction
             var batchSize = settings.OcrBatchSize > 0 ? settings.OcrBatchSize : 15;
             var srtBuilder = new StringBuilder();
             var globalSubIndex = 1;
@@ -84,7 +84,7 @@ public class BitmapSubtitleTranslator(
 
     private static string BuildPrompt(List<RenderedFrame> batch, LlmSettingsDto settings)
     {
-        var prompt = settings.OcrSystemPrompt ?? "";
+        var prompt = settings.SystemPrompt ?? "";
 
         var timestampList = new StringBuilder();
         for (var j = 0; j < batch.Count; j++)
@@ -94,7 +94,6 @@ public class BitmapSubtitleTranslator(
         }
 
         prompt = prompt.Replace("{timestamps}", timestampList.ToString().TrimEnd());
-        prompt = prompt.Replace("{preferredLang}", settings.PreferredSubsLang);
 
         return prompt;
     }

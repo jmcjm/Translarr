@@ -12,6 +12,7 @@ public class BitmapTranslationService(
     IApiUsageService apiUsageService,
     IFfmpegService ffmpegService,
     IBitmapSubtitleTranslator bitmapSubtitleTranslator,
+    ISubtitleTranslator subtitleTranslator,
     ILogger<BitmapTranslationService> logger,
     IFileService fileService)
     : IBitmapTranslationService
@@ -38,9 +39,10 @@ public class BitmapTranslationService(
 
             logger.LogInformation("Found {count} unprocessed bitmap entries", entries.Count);
 
-            // Get LLM settings once before processing batch
-            var llmSettings = await settingsService.GetLlmSettingsAsync();
-            logger.LogInformation("Using LLM model {model} at {baseUrl} for bitmap OCR", llmSettings.Model, llmSettings.BaseUrl);
+            // Get separate settings for OCR and translation
+            var ocrSettings = await settingsService.GetOcrLlmSettingsAsync();
+            var translationSettings = await settingsService.GetLlmSettingsAsync();
+            logger.LogInformation("Using OCR model {ocrModel} and translation model {transModel}", ocrSettings.Model, translationSettings.Model);
 
             var totalFiles = entries.Count;
             var processedCount = 0;
@@ -56,7 +58,7 @@ public class BitmapTranslationService(
 
                 try
                 {
-                    await ProcessBitmapEntryAsync(entry, result, llmSettings, processedCount, totalFiles, onProgressUpdate, cancellationToken);
+                    await ProcessBitmapEntryAsync(entry, result, ocrSettings, translationSettings, processedCount, totalFiles, onProgressUpdate, cancellationToken);
                     processedCount++;
                 }
                 catch (OperationCanceledException)
@@ -104,17 +106,18 @@ public class BitmapTranslationService(
     private async Task ProcessBitmapEntryAsync(
         SubtitleEntryDto entry,
         TranslationResultDto result,
-        LlmSettingsDto settings,
+        LlmSettingsDto ocrSettings,
+        LlmSettingsDto translationSettings,
         int currentIndex,
         int totalFiles,
         Action<TranslationProgressUpdate>? onProgressUpdate,
         CancellationToken cancellationToken = default)
     {
-        // 1. Check rate limit
+        // 1. Check rate limit for OCR model
         ReportProgress(TranslationStep.CheckingRateLimit);
-        if (!await apiUsageService.CanMakeRequestAsync(settings.Model))
+        if (!await apiUsageService.CanMakeRequestAsync(ocrSettings.Model))
         {
-            throw new InvalidOperationException("API rate limit exceeded");
+            throw new InvalidOperationException("API rate limit exceeded for OCR model");
         }
 
         // 2. Find best bitmap subtitle stream
@@ -133,42 +136,70 @@ public class BitmapTranslationService(
             return;
         }
 
-        // 3. Translate bitmap subtitles via OCR
+        // 3. Stage 1: OCR — extract text from bitmap subtitles
         cancellationToken.ThrowIfCancellationRequested();
-        ReportProgress(TranslationStep.TranslatingWithLlm);
-        logger.LogInformation("Sending bitmap subtitles for OCR translation: {file}", entry.FileName);
-        var translatedContent = await bitmapSubtitleTranslator.TranslateBitmapSubtitlesAsync(
-            entry.FilePath, stream.StreamIndex, settings,
+        ReportProgress(TranslationStep.OcrExtraction);
+        logger.LogInformation("Sending bitmap subtitles for OCR extraction: {file}", entry.FileName);
+        var ocrResult = await bitmapSubtitleTranslator.ExtractBitmapSubtitlesAsync(
+            entry.FilePath, stream.StreamIndex, ocrSettings,
             onBatchProgress: (current, total) =>
             {
                 onProgressUpdate?.Invoke(new TranslationProgressUpdate(
                     TotalFiles: totalFiles,
                     ProcessedFiles: currentIndex,
                     CurrentFileName: entry.FileName,
-                    CurrentStep: TranslationStep.TranslatingWithLlm,
+                    CurrentStep: TranslationStep.OcrExtraction,
                     CurrentBatch: current,
                     TotalBatches: total));
             },
             cancellationToken: cancellationToken);
-        logger.LogInformation("Received OCR translation for {file}", entry.FileName);
+        logger.LogInformation("OCR extraction complete for {file}", entry.FileName);
 
-        // 4. Save translated SRT
+        // 4. Check rate limit for translation model
+        cancellationToken.ThrowIfCancellationRequested();
+        ReportProgress(TranslationStep.CheckingRateLimit);
+        if (!await apiUsageService.CanMakeRequestAsync(translationSettings.Model))
+        {
+            throw new InvalidOperationException("API rate limit exceeded for translation model");
+        }
+
+        // 5. Stage 2: Translation — translate extracted text
+        ReportProgress(TranslationStep.TranslatingOcrResult);
+        logger.LogInformation("Translating OCR result for {file}", entry.FileName);
+        string translatedContent;
+        try
+        {
+            translatedContent = await subtitleTranslator.TranslateSubtitlesAsync(ocrResult, translationSettings);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"OCR succeeded but translation failed: {ex.Message}", ex);
+        }
+        logger.LogInformation("Translation complete for {file}", entry.FileName);
+
+        // 6. Save translated SRT
         ReportProgress(TranslationStep.SavingSubtitles);
         var baseFileName = Path.GetFileNameWithoutExtension(entry.FileName);
-        var outputFileName = $"{baseFileName}.{settings.PreferredSubsLang}.srt";
+        var outputFileName = $"{baseFileName}.{translationSettings.PreferredSubsLang}.srt";
         var outputPath = Path.Combine(Path.GetDirectoryName(entry.FilePath)!, outputFileName);
         await fileService.WriteTextAsync(outputPath, translatedContent);
 
-        // 5. Update record
+        // 7. Update record
         entry.IsProcessed = true;
+        entry.AlreadyHad = true;
         entry.ProcessedAt = DateTime.UtcNow;
         entry.ErrorMessage = null;
         await repository.UpdateAsync(entry);
 
-        // 6. Record API usage
+        // 8. Record API usage for both models
         await apiUsageService.RecordUsageAsync(new ApiUsageDto
         {
-            Model = settings.Model,
+            Model = ocrSettings.Model,
+            Date = DateTime.UtcNow
+        });
+        await apiUsageService.RecordUsageAsync(new ApiUsageDto
+        {
+            Model = translationSettings.Model,
             Date = DateTime.UtcNow
         });
 

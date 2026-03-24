@@ -110,20 +110,25 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
             ("AutoTranslate", "false", "Whether to automatically translate new subtitles (requires Worker Service – not yet available)"),
             ("OcrBatchSize", "15", "Number of subtitle frames per OCR API request"),
             ("OcrSystemPrompt",
-                "### You are an OCR and subtitle translator (English → {preferredLang}).\n" +
+                "### You are an OCR engine for subtitle images.\n" +
                 "You receive numbered images containing embedded subtitles along with their exact timestamps.\n\n" +
                 "{timestamps}\n\n" +
                 "For each image:\n" +
-                "1. Extract the text from the image\n" +
-                "2. Translate it to {preferredLang}\n" +
-                "3. Use EXACTLY the provided timestamps\n\n" +
+                "1. Extract the text exactly as it appears in the image\n" +
+                "2. Use EXACTLY the provided timestamps\n\n" +
                 "Rules:\n" +
                 "- Output **MUST** always be in valid **SRT** format\n" +
                 "- **Remove** any formatting tags\n" +
                 "- Number subtitles sequentially starting from 1\n" +
                 "- Preserve line breaks within subtitles\n" +
+                "- Do NOT translate the text — preserve the original language\n" +
                 "- Return ONLY the SRT subtitles, nothing else",
-                "System prompt template for bitmap OCR+translation. Use {timestamps} and {preferredLang} placeholders."),
+                "System prompt template for bitmap OCR. Use {timestamps} placeholder for timestamp list."),
+            ("OcrLlmApiKey", "", "API key for OCR model (leave empty to use main model)"),
+            ("OcrLlmBaseUrl", "", "Base URL for OCR model (leave empty to use main model)"),
+            ("OcrLlmModel", "", "Model name for OCR (leave empty to use main model)"),
+            ("OcrTemperature", "0", "Temperature for OCR model"),
+            ("OcrMaxOutputTokens", "", "Max output tokens for OCR model (leave empty to use main model)"),
         };
         
         var addedCount = 0;
@@ -163,6 +168,29 @@ public class TranslarrDatabaseInitializer(TranslarrDbContext context, ILogger<Tr
         else
         {
             logger.LogInformation("All default settings already exist, no seeding needed");
+        }
+
+        // Update OcrSystemPrompt if it still has the old default that included translation
+        var ocrPromptSetting = await context.AppSettings
+            .FirstOrDefaultAsync(s => s.Key == "OcrSystemPrompt");
+        if (ocrPromptSetting != null && ocrPromptSetting.Value.Contains("{preferredLang}"))
+        {
+            ocrPromptSetting.Value =
+                "### You are an OCR engine for subtitle images.\n" +
+                "You receive numbered images containing embedded subtitles along with their exact timestamps.\n\n" +
+                "{timestamps}\n\n" +
+                "For each image:\n" +
+                "1. Extract the text exactly as it appears in the image\n" +
+                "2. Use EXACTLY the provided timestamps\n\n" +
+                "Rules:\n" +
+                "- Output **MUST** always be in valid **SRT** format\n" +
+                "- **Remove** any formatting tags\n" +
+                "- Number subtitles sequentially starting from 1\n" +
+                "- Preserve line breaks within subtitles\n" +
+                "- Do NOT translate the text — preserve the original language\n" +
+                "- Return ONLY the SRT subtitles, nothing else";
+            await context.SaveChangesAsync();
+            logger.LogInformation("Updated OcrSystemPrompt to OCR-only default (removed translation instructions)");
         }
     }
 }

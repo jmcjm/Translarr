@@ -10,5 +10,7 @@ public enum TranslationStep
     ValidatingSize,
     TranslatingWithLlm,
     SavingSubtitles,
+    OcrExtraction,
+    TranslatingOcrResult,
     Completed
 }

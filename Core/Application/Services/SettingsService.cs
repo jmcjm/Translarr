@@ -79,8 +79,6 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
         var ocrBatchSizeStr = await GetSettingAsync("OcrBatchSize");
         var ocrBatchSize = int.TryParse(ocrBatchSizeStr, out var obs) ? obs : 15;
 
-        var ocrSystemPrompt = await GetSettingAsync("OcrSystemPrompt") ?? "";
-
         return new LlmSettingsDto
         {
             ApiKey = apiKey,
@@ -91,7 +89,56 @@ public class SettingsService(IAppSettingsRepository repository, IUnitOfWork unit
             MaxOutputTokens = maxOutputTokens,
             PreferredSubsLang = preferredLang,
             OcrBatchSize = ocrBatchSize,
-            OcrSystemPrompt = ocrSystemPrompt,
+        };
+    }
+
+    public async Task<LlmSettingsDto> GetOcrLlmSettingsAsync()
+    {
+        var ocrApiKey = await GetSettingAsync("OcrLlmApiKey");
+        var apiKey = !string.IsNullOrWhiteSpace(ocrApiKey)
+            ? ocrApiKey
+            : await GetSettingAsync("LlmApiKey") ?? throw new ArgumentException("LlmApiKey setting not found");
+
+        var ocrBaseUrl = await GetSettingAsync("OcrLlmBaseUrl");
+        var baseUrl = !string.IsNullOrWhiteSpace(ocrBaseUrl)
+            ? ocrBaseUrl
+            : await GetSettingAsync("LlmBaseUrl") ?? throw new ArgumentException("LlmBaseUrl setting not found");
+
+        var ocrModel = await GetSettingAsync("OcrLlmModel");
+        var model = !string.IsNullOrWhiteSpace(ocrModel)
+            ? ocrModel
+            : await GetSettingAsync("LlmModel") ?? throw new ArgumentException("LlmModel setting not found");
+
+        var ocrTempStr = await GetSettingAsync("OcrTemperature");
+        var temperature = float.TryParse(ocrTempStr, System.Globalization.CultureInfo.InvariantCulture, out var ocrTemp)
+            ? ocrTemp
+            : 0f;
+
+        var ocrMaxTokensStr = await GetSettingAsync("OcrMaxOutputTokens");
+        int maxOutputTokens;
+        if (!string.IsNullOrWhiteSpace(ocrMaxTokensStr) && int.TryParse(ocrMaxTokensStr, out var ocrMaxTokens))
+            maxOutputTokens = ocrMaxTokens;
+        else
+        {
+            var mainMaxStr = await GetSettingAsync("LlmMaxOutputTokens");
+            maxOutputTokens = int.TryParse(mainMaxStr, out var mainMax) ? mainMax : 65535;
+        }
+
+        var ocrSystemPrompt = await GetSettingAsync("OcrSystemPrompt") ?? "";
+        var preferredLang = await GetSettingAsync("PreferredSubsLang") ?? "pl";
+        var batchSizeStr = await GetSettingAsync("OcrBatchSize");
+        var batchSize = int.TryParse(batchSizeStr, out var bs) ? bs : 15;
+
+        return new LlmSettingsDto
+        {
+            ApiKey = apiKey,
+            BaseUrl = baseUrl,
+            Model = model,
+            SystemPrompt = ocrSystemPrompt,
+            Temperature = temperature,
+            MaxOutputTokens = maxOutputTokens,
+            PreferredSubsLang = preferredLang,
+            OcrBatchSize = batchSize
         };
     }
 }

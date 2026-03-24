@@ -352,6 +352,8 @@ public static class TranslationEndpoints
             TranslationStep.ValidatingSize => "Validating size",
             TranslationStep.TranslatingWithLlm => "Translating with LLM",
             TranslationStep.SavingSubtitles => "Saving subtitles",
+            TranslationStep.OcrExtraction => "Extracting text (OCR)",
+            TranslationStep.TranslatingOcrResult => "Translating OCR result",
             TranslationStep.Completed => "Completed",
             _ => "Processing"
         };
